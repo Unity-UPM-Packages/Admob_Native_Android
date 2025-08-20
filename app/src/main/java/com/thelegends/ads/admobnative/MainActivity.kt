@@ -1,20 +1,115 @@
+// File: app/src/main/java/com/yourcompany/admobnative/MainActivity.kt // Thay bằng package name của module app
 package com.thelegends.ads.admobnative
 
-import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import android.os.Bundle
+import android.util.Log
+import android.widget.Button
+import android.widget.Toast
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdValue
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.thelegends.admob_native_unity.AdmobNativeController // Import controller của bạn
+import com.thelegends.admob_native_unity.NativeAdCallbacks     // Import interface callback
+import com.thelegends.ads.admobnative.R
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement interface
+
+    private lateinit var admobNativeController: AdmobNativeController
+    private val TAG = "MainActivityTest"
+
+    // Sử dụng Ad Unit ID test của Google cho quảng cáo Native
+    private val TEST_AD_UNIT_ID = "ca-app-pub-3940256099942544/1044960115"
+    // Tên file layout bạn đã tạo trong module library
+    private val NATIVE_LAYOUT_NAME = "gnt_medium_template_view"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+        setContentView(R.layout.activity_main) // Cần có layout cho app module
+
+        // Tạo instance của controller, truyền vào Activity và chính nó làm listener
+        admobNativeController = AdmobNativeController(this, this)
+
+        // Thiết lập các nút bấm để test
+        val initSdkButton: Button = findViewById(R.id.init_sdk_button)
+        val loadAdButton: Button = findViewById(R.id.load_ad_button)
+        val showAdButton: Button = findViewById(R.id.show_ad_button)
+
+        initSdkButton.setOnClickListener {
+            Log.d(TAG, "Initialize SDK button clicked.")
+
+            // Gọi hàm khởi tạo của AdMob SDK
+            MobileAds.initialize(this) { initializationStatus ->
+                // Callback này được gọi khi khởi tạo xong
+                val statusMap = initializationStatus.adapterStatusMap
+                for (adapterClass in statusMap.keys) {
+                    val status = statusMap[adapterClass]
+                    Log.d(TAG, String.format("Adapter name: %s, Description: %s, Latency: %d",
+                        adapterClass, status!!.description, status.latency))
+                }
+
+                // Thông báo cho người dùng biết đã xong
+                Toast.makeText(this, "AdMob SDK Initialized!", Toast.LENGTH_SHORT).show()
+                Log.i(TAG, "AdMob SDK initialization complete.")
+            }
         }
+
+        loadAdButton.setOnClickListener {
+            Log.d(TAG, "Load Ad button clicked. Requesting a new ad...")
+            val adRequest = AdRequest.Builder().build()
+            admobNativeController.loadAd(TEST_AD_UNIT_ID, adRequest)
+        }
+
+        showAdButton.setOnClickListener {
+            if (admobNativeController.isAdAvailable()) {
+                Log.d(TAG, "Show Ad button clicked. Showing the ad...")
+                admobNativeController.showAd(NATIVE_LAYOUT_NAME)
+            } else {
+                Toast.makeText(this, "Ad not available yet. Please load first.", Toast.LENGTH_SHORT).show()
+                Log.w(TAG, "Show Ad button clicked, but ad is not available.")
+            }
+        }
+    }
+
+    // === TRIỂN KHAI CÁC CALLBACK TỪ NativeAdCallbacks ===
+
+    override fun onAdLoaded() {
+        Log.i(TAG, "CALLBACK RECEIVED: onAdLoaded")
+        Toast.makeText(this, "Ad Loaded Successfully!", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onAdFailedToLoad(error: LoadAdError) {
+        val errorMessage = "Error Code: ${error.code}, Message: ${error.message}"
+        Log.e(TAG, "CALLBACK RECEIVED: onAdFailedToLoad - $errorMessage")
+    }
+
+    override fun onPaidEvent(precisionType: Int, valueMicros: Long, currencyCode: String) {
+        val adValueString = "Value: ${valueMicros / 1000000.0} $currencyCode, Precision: $precisionType"
+        Log.i(TAG, "CALLBACK RECEIVED: onPaidEvent - $adValueString")
+    }
+
+    override fun onAdDidRecordImpression() {
+        Log.i(TAG, "CALLBACK RECEIVED: onAdDidRecordImpression")
+    }
+    override fun onAdClicked() {
+        Log.i(TAG, "CALLBACK RECEIVED: onAdClicked")
+    }
+    override fun onVideoStart() {
+        Log.i(TAG, "CALLBACK RECEIVED: onVideoStart")
+    }
+    override fun onVideoEnd() {
+        Log.i(TAG, "CALLBACK RECEIVED: onVideoEnd")
+    }
+    override fun onVideoMute(isMuted: Boolean) {
+        Log.i(TAG, "CALLBACK RECEIVED: onVideoMute - isMuted: $isMuted")
+    }
+
+    override fun onVideoPlay() {
+        Log.i(TAG, "CALLBACK RECEIVED: onVideoPlay")
+    }
+
+    override fun onVideoPause() {
+        Log.i(TAG, "CALLBACK RECEIVED: onVideoPause")
     }
 }
