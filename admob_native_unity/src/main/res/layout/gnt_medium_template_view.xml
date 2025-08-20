@@ -21,7 +21,7 @@
         <com.google.android.gms.ads.nativead.MediaView
             android:id="@+id/media_view"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="0dp"
             android:layout_margin="@dimen/gnt_no_size"
             android:layout_marginTop="@dimen/gnt_no_margin"
             app:layout_constraintBottom_toTopOf="@id/middle"
@@ -189,7 +189,7 @@
         <TextView
             android:id="@+id/body"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_margin="@dimen/gnt_no_size"
             android:layout_marginBottom="@dimen/gnt_small_margin"
             android:paddingStart="@dimen/gnt_default_margin"
@@ -203,7 +203,7 @@
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/cta"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="50dp"
             android:layout_marginLeft="5dp"
             android:layout_marginRight="5dp"
             android:background="@color/gnt_blue"
