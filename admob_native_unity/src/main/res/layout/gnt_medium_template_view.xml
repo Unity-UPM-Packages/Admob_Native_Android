@@ -135,7 +135,7 @@
                             android:textStyle="bold"
                             app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toTopOf="parent"></TextView>
+                            app:layout_constraintTop_toTopOf="parent" />
 
                         <RatingBar
                             android:id="@+id/rating_bar"
@@ -217,11 +217,14 @@
             app:layout_constraintTop_toBottomOf="@id/body" />
 
         <ImageView
-            android:layout_width="25dp"
-            android:layout_height="25dp"
+            android:id="@+id/ad_close_button"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:padding="5dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:src="@color/gnt_black"/>
+            android:contentDescription="Close Ad" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.gms.ads.nativead.NativeAdView>

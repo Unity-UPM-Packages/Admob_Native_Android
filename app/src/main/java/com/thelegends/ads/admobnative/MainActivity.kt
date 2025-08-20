@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
 
                 // Thông báo cho người dùng biết đã xong
                 Toast.makeText(this, "AdMob SDK Initialized!", Toast.LENGTH_SHORT).show()
-                Log.i(TAG, "AdMob SDK initialization complete.")
+                Log.d(TAG, "AdMob SDK initialization complete.")
             }
         }
 
@@ -67,7 +67,7 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
                 admobNativeController.showAd(NATIVE_LAYOUT_NAME)
             } else {
                 Toast.makeText(this, "Ad not available yet. Please load first.", Toast.LENGTH_SHORT).show()
-                Log.w(TAG, "Show Ad button clicked, but ad is not available.")
+                Log.d(TAG, "Show Ad button clicked, but ad is not available.")
             }
         }
     }
@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
     // === TRIỂN KHAI CÁC CALLBACK TỪ NativeAdCallbacks ===
 
     override fun onAdLoaded() {
-        Log.i(TAG, "CALLBACK RECEIVED: onAdLoaded")
+        Log.d(TAG, "CALLBACK RECEIVED: onAdLoaded")
         Toast.makeText(this, "Ad Loaded Successfully!", Toast.LENGTH_SHORT).show()
     }
 
@@ -84,32 +84,40 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
         Log.e(TAG, "CALLBACK RECEIVED: onAdFailedToLoad - $errorMessage")
     }
 
+    override fun onAdShow() {
+        Log.d(TAG, "CALLBACK RECEIVED: onAdShow")
+    }
+
+    override fun onAdClosed() {
+        Log.d(TAG, "CALLBACK RECEIVED: onAdClosed")
+    }
+
     override fun onPaidEvent(precisionType: Int, valueMicros: Long, currencyCode: String) {
         val adValueString = "Value: ${valueMicros / 1000000.0} $currencyCode, Precision: $precisionType"
-        Log.i(TAG, "CALLBACK RECEIVED: onPaidEvent - $adValueString")
+        Log.d(TAG, "CALLBACK RECEIVED: onPaidEvent - $adValueString")
     }
 
     override fun onAdDidRecordImpression() {
-        Log.i(TAG, "CALLBACK RECEIVED: onAdDidRecordImpression")
+        Log.d(TAG, "CALLBACK RECEIVED: onAdDidRecordImpression")
     }
     override fun onAdClicked() {
-        Log.i(TAG, "CALLBACK RECEIVED: onAdClicked")
+        Log.d(TAG, "CALLBACK RECEIVED: onAdClicked")
     }
     override fun onVideoStart() {
-        Log.i(TAG, "CALLBACK RECEIVED: onVideoStart")
+        Log.d(TAG, "CALLBACK RECEIVED: onVideoStart")
     }
     override fun onVideoEnd() {
-        Log.i(TAG, "CALLBACK RECEIVED: onVideoEnd")
+        Log.d(TAG, "CALLBACK RECEIVED: onVideoEnd")
     }
     override fun onVideoMute(isMuted: Boolean) {
-        Log.i(TAG, "CALLBACK RECEIVED: onVideoMute - isMuted: $isMuted")
+        Log.d(TAG, "CALLBACK RECEIVED: onVideoMute - isMuted: $isMuted")
     }
 
     override fun onVideoPlay() {
-        Log.i(TAG, "CALLBACK RECEIVED: onVideoPlay")
+        Log.d(TAG, "CALLBACK RECEIVED: onVideoPlay")
     }
 
     override fun onVideoPause() {
-        Log.i(TAG, "CALLBACK RECEIVED: onVideoPause")
+        Log.d(TAG, "CALLBACK RECEIVED: onVideoPause")
     }
 }

@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
+import android.widget.ImageView
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
@@ -79,7 +80,7 @@ class AdmobNativeController(
     fun showAd(layoutName: String) {
         val adToShow = loadedNativeAd
         if (adToShow == null) {
-            Log.e(TAG, "showAd called but no ad is loaded.")
+            Log.d(TAG, "showAd called but no ad is loaded.")
             return
         }
 
@@ -87,13 +88,21 @@ class AdmobNativeController(
             // **BƯỚC 1 (Giống Google): Chuẩn bị adView bằng cách inflate layout**
             val layoutId = activity.resources.getIdentifier(layoutName, "layout", activity.packageName)
             if (layoutId == 0) {
-                Log.e(TAG, "Layout '$layoutName' not found!")
+                Log.d(TAG, "Layout '$layoutName' not found!")
                 // Có thể gọi callback thất bại ở đây nếu muốn
                 // callbacks.onAdFailedToPresentFullScreenContent("Layout not found")
                 return@runOnUiThread
             }
             val inflater = LayoutInflater.from(activity)
             val adView = inflater.inflate(layoutId, null) as NativeAdView
+
+            val closeButton = adView.findViewById<ImageView>(R.id.ad_close_button)
+            closeButton?.setOnClickListener {
+                Log.d(TAG, "Close button clicked. Destroying ad.")
+                destroyAd()
+                callbacks.onAdClosed()
+            }
+
 
             // **BƯỚC 2 (Giống Google): Điền dữ liệu vào adView**
             populateNativeAdView(adToShow, adView)
@@ -219,6 +228,9 @@ class AdmobNativeController(
         // Đây là bước quan trọng nhất để SDK bắt đầu theo dõi impression, click
         // và tự động hiển thị video/hình ảnh vào MediaView.
         adView.setNativeAd(nativeAd)
+
+        callbacks.onAdShow()
+        Log.d(TAG, "Ad Opened")
     }
 
     // Helper function để gắn các callback vào NativeAd và VideoController

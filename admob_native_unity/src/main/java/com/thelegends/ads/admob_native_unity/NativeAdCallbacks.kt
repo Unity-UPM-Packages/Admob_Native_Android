@@ -12,6 +12,8 @@ interface NativeAdCallbacks {
     // Tải quảng cáo
     fun onAdLoaded()
     fun onAdFailedToLoad(error: LoadAdError)
+    fun onAdShow();
+    fun onAdClosed();
 
     // Doanh thu
     fun onPaidEvent(precisionType: Int, valueMicros: Long, currencyCode: String)
