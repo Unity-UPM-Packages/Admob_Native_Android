@@ -2,6 +2,7 @@
 package com.thelegends.admob_native_unity
 
 import android.app.Activity
+import android.os.CountDownTimer
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -9,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.ImageView
+import android.widget.ProgressBar
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
@@ -26,6 +28,8 @@ class AdmobNativeController(
     private var loadedNativeAd: NativeAd? = null
     private var adView: NativeAdView? = null
     private var adContainer: FrameLayout? = null
+
+    private var countdownTimer: CountDownTimer? = null
 
     private val TAG = "AdmobNativeController"
 
@@ -95,15 +99,9 @@ class AdmobNativeController(
                 return@runOnUiThread
             }
             val inflater = LayoutInflater.from(activity)
-            val adView = inflater.inflate(layoutId, null) as NativeAdView
+            adView = inflater.inflate(layoutId, null) as NativeAdView
 
-            val closeButton = adView.findViewById<ImageView>(R.id.ad_close_button)
-            closeButton?.setOnClickListener {
-                Log.d(TAG, "Close button clicked. Destroying ad.")
-                destroyAd()
-                callbacks.onAdClosed()
-            }
-
+            handleProgress(adView);
 
             // **BƯỚC 2 (Giống Google): Điền dữ liệu vào adView**
             populateNativeAdView(adToShow, adView)
@@ -123,6 +121,48 @@ class AdmobNativeController(
         }
     }
 
+    fun handleProgress(adView: NativeAdView?) {
+        val closeButton = adView?.findViewById<ImageView>(R.id.ad_close_button)
+        closeButton?.setOnClickListener {
+            Log.d(TAG, "Close button clicked. Destroying ad.")
+            destroyAd()
+            callbacks.onAdClosed()
+        }
+
+        val progressBar = adView?.findViewById<ProgressBar>(R.id.ad_progress_bar)
+        val countdownText = adView?.findViewById<TextView>(R.id.ad_countdown_text)
+
+        countdownTimer?.cancel()
+        closeButton?.visibility = View.GONE
+        progressBar?.visibility = View.VISIBLE
+        countdownText?.visibility = View.VISIBLE
+
+        countdownTimer = object : CountDownTimer(5000, 1000) { // 5 giây, tick mỗi 1 giây
+
+            // Hàm này được gọi mỗi giây
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsRemaining = (millisUntilFinished / 1000).toInt() + 1
+                countdownText?.text = secondsRemaining.toString()
+                progressBar?.progress = (millisUntilFinished * 100 / 5000).toInt()
+            }
+
+            // Hàm này được gọi khi 5 giây kết thúc
+            override fun onFinish() {
+                // Ẩn bộ đếm
+                progressBar?.visibility = View.GONE
+                countdownText?.visibility = View.GONE
+                // Hiển thị nút X
+                closeButton?.visibility = View.VISIBLE
+            }
+        }.start()
+
+        closeButton?.setOnClickListener {
+            Log.d(TAG, "Close button clicked. Destroying ad.")
+            destroyAd()
+            callbacks.onAdClosed()
+        }
+    }
+
     fun destroyAd() {
         activity.runOnUiThread {
             adContainer?.removeAllViews()
@@ -131,26 +171,30 @@ class AdmobNativeController(
         }
         loadedNativeAd?.destroy()
         loadedNativeAd = null
+
+        countdownTimer?.cancel()
+        countdownTimer = null
+
         Log.d(TAG, "Native ad has been destroyed.")
     }
 
     fun isAdAvailable(): Boolean = loadedNativeAd != null
 
     // Helper function để điền dữ liệu vào layout
-    private fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
+    private fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView?) {
         // === BƯỚC 1: GÁN CÁC VIEW CHO SDK ===
         // Gán các view con cho các thuộc tính tương ứng của NativeAdView.
         // Việc này rất quan trọng để SDK có thể tự động xử lý click và impression.
-        adView.mediaView = adView.findViewById(R.id.media_view)
-        adView.headlineView = adView.findViewById(R.id.primary)
-        adView.bodyView = adView.findViewById(R.id.body)
-        adView.callToActionView = adView.findViewById(R.id.cta)
-        adView.iconView = adView.findViewById(R.id.icon)
-        adView.starRatingView = adView.findViewById(R.id.rating_bar)
-        adView.advertiserView = adView.findViewById(R.id.secondary)
+        adView?.mediaView = adView.findViewById(R.id.media_view)
+        adView?.headlineView = adView.findViewById(R.id.primary)
+        adView?.bodyView = adView.findViewById(R.id.body)
+        adView?.callToActionView = adView.findViewById(R.id.cta)
+        adView?.iconView = adView.findViewById(R.id.icon)
+        adView?.starRatingView = adView.findViewById(R.id.rating_bar)
+        adView?.advertiserView = adView.findViewById(R.id.secondary)
 //        adView.storeView = adView.findViewById(R.id.ad_store) // Cần view có ID @+id/ad_store trong XML
 //        adView.priceView = adView.findViewById(R.id.ad_price)   // Cần view có ID @+id/ad_price trong XML
-        adView.mediaView?.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        adView?.mediaView?.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         // === BƯỚC 2: ĐIỀN DỮ LIỆU VÀO TỪNG VIEW ===
 
@@ -159,10 +203,10 @@ class AdmobNativeController(
         // SDK sẽ tự động xử lý khi gọi setNativeAd(). Dòng adView.mediaView = ... ở Bước 1 là đủ.
 
         // 2. Headline (Tiêu đề)
-        (adView.headlineView as? TextView)?.text = nativeAd.headline
+        (adView?.headlineView as? TextView)?.text = nativeAd.headline
 
         // 3. Body (Nội dung mô tả)
-        val bodyView = adView.bodyView as? TextView
+        val bodyView = adView?.bodyView as? TextView
         if (nativeAd.body != null) {
             bodyView?.text = nativeAd.body
             bodyView?.visibility = android.view.View.VISIBLE
@@ -171,7 +215,7 @@ class AdmobNativeController(
         }
 
         // 4. Call to Action (Nút kêu gọi hành động)
-        val ctaButton = adView.callToActionView as? android.widget.Button
+        val ctaButton = adView?.callToActionView as? android.widget.Button
         if (nativeAd.callToAction != null) {
             ctaButton?.text = nativeAd.callToAction
             ctaButton?.visibility = android.view.View.VISIBLE
@@ -180,7 +224,7 @@ class AdmobNativeController(
         }
 
         // 5. Icon (Biểu tượng ứng dụng)
-        val iconView = adView.iconView as? android.widget.ImageView
+        val iconView = adView?.iconView as? android.widget.ImageView
         if (nativeAd.icon != null) {
             iconView?.setImageDrawable(nativeAd.icon?.drawable)
             iconView?.visibility = android.view.View.VISIBLE
@@ -189,7 +233,7 @@ class AdmobNativeController(
         }
 
         // 6. Star Rating (Đánh giá sao)
-        val ratingBar = adView.starRatingView as? android.widget.RatingBar
+        val ratingBar = adView?.starRatingView as? android.widget.RatingBar
         if (nativeAd.starRating != null) {
             ratingBar?.rating = nativeAd.starRating!!.toFloat()
             ratingBar?.visibility = android.view.View.VISIBLE
@@ -198,7 +242,7 @@ class AdmobNativeController(
         }
 
         // 7. Advertiser (Nhà quảng cáo)
-        val advertiserView = adView.advertiserView as? TextView
+        val advertiserView = adView?.advertiserView as? TextView
         if (nativeAd.advertiser != null) {
             advertiserView?.text = nativeAd.advertiser
             advertiserView?.visibility = android.view.View.VISIBLE
@@ -229,7 +273,7 @@ class AdmobNativeController(
         // Gán đối tượng NativeAd cho NativeAdView.
         // Đây là bước quan trọng nhất để SDK bắt đầu theo dõi impression, click
         // và tự động hiển thị video/hình ảnh vào MediaView.
-        adView.setNativeAd(nativeAd)
+        adView?.setNativeAd(nativeAd)
 
         callbacks.onAdShow()
         Log.d(TAG, "Ad Opened")
