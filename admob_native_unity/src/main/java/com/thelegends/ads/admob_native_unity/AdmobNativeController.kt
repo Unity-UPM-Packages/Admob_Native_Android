@@ -4,6 +4,7 @@ package com.thelegends.admob_native_unity
 import android.app.Activity
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -149,6 +150,7 @@ class AdmobNativeController(
         adView.advertiserView = adView.findViewById(R.id.secondary)
 //        adView.storeView = adView.findViewById(R.id.ad_store) // Cần view có ID @+id/ad_store trong XML
 //        adView.priceView = adView.findViewById(R.id.ad_price)   // Cần view có ID @+id/ad_price trong XML
+        adView.mediaView?.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         // === BƯỚC 2: ĐIỀN DỮ LIỆU VÀO TỪNG VIEW ===
 
