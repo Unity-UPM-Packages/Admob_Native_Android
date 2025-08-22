@@ -3,16 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:layout_height="match_parent">
 
 
     <com.google.android.gms.ads.nativead.NativeAdView
         android:id="@+id/native_ad_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginStart="100dp"
-        android:layout_marginEnd="100dp"
+        android:layout_marginStart="150dp"
+        android:layout_marginEnd="150dp"
         android:background="@drawable/gnt_outline_shape">
 
         <androidx.constraintlayout.widget.ConstraintLayout
@@ -229,15 +228,15 @@
 
             <ImageView
                 android:id="@+id/ad_close_button"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:padding="5dp"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 android:contentDescription="Close Ad"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="8dp" />
+                android:layout_marginTop="15dp"
+                android:layout_marginStart="15dp" />
 
             <ProgressBar
                 android:id="@+id/ad_progress_bar"
