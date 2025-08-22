@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.google.android.gms.ads.nativead.NativeAdView
+        android:id="@+id/native_ad_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <com.google.android.gms.ads.nativead.MediaView
+                android:id="@+id/media_view"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/bottom_card"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/ad_card_background"
+                android:elevation="4dp"
+                android:padding="8dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent">
+
+                <!-- Icon được làm nhỏ hơn -->
+                <ImageView
+                    android:id="@+id/icon"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:scaleType="fitCenter"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:src="@android:drawable/sym_def_app_icon" />
+
+                <!-- Container cho Title/Secondary -->
+                <LinearLayout
+                    android:id="@+id/content"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:orientation="vertical"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/cta"
+                    app:layout_constraintStart_toEndOf="@id/icon"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <!-- Có thể giảm cỡ chữ nếu cần -->
+                    <TextView
+                        android:id="@+id/primary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@android:color/black"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        tools:text="Title of the Ad" />
+
+                    <TextView
+                        android:id="@+id/secondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@android:color/darker_gray"
+                        android:textSize="13sp"
+                        tools:text="Advertiser Name" />
+                </LinearLayout>
+
+                <!-- Nút CTA được làm nhỏ hơn -->
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/cta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/ad_cta_button_background"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:text="Install" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+<!--            <TextView-->
+<!--                android:id="@+id/body"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:visibility="gone"-->
+<!--                app:layout_constraintStart_toStartOf="parent"-->
+<!--                app:layout_constraintTop_toTopOf="parent" />-->
+
+<!--            <RatingBar-->
+<!--                android:id="@+id/rating_bar"-->
+<!--                style="?android:attr/ratingBarStyleSmall"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:visibility="gone"-->
+<!--                app:layout_constraintStart_toStartOf="parent"-->
+<!--                app:layout_constraintTop_toTopOf="parent" />-->
+
+            <ImageView
+                android:id="@+id/ad_close_button"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginStart="15dp"
+                android:layout_marginTop="15dp"
+                android:background="#80000000"
+                android:contentDescription="Close Ad"
+                android:padding="5dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:tint="@android:color/white" />
+
+            <!-- 5. Bộ đếm ngược ở góc trên bên phải (Theo chuẩn) -->
+            <ProgressBar
+                android:id="@+id/ad_progress_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="17dp"
+                android:indeterminate="false"
+                android:progress="100"
+                android:progressDrawable="@drawable/circular_progress_bar"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/ad_countdown_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="@id/ad_progress_bar"
+                app:layout_constraintEnd_toEndOf="@id/ad_progress_bar"
+                app:layout_constraintStart_toStartOf="@id/ad_progress_bar"
+                app:layout_constraintTop_toTopOf="@id/ad_progress_bar"
+                tools:text="5" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.gms.ads.nativead.NativeAdView>
+</FrameLayout>
