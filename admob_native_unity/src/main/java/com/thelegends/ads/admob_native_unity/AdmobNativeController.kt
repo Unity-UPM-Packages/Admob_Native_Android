@@ -2,8 +2,10 @@
 package com.thelegends.admob_native_unity
 
 import android.app.Activity
+import android.app.Dialog
 import android.os.CountDownTimer
 import android.util.Log
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +13,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.ImageView
 import android.widget.ProgressBar
+import androidx.core.view.marginStart
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
@@ -27,6 +30,7 @@ class AdmobNativeController(
 
     private var loadedNativeAd: NativeAd? = null
     private var adView: NativeAdView? = null
+    private var adDialog: Dialog? = null
     private var adContainer: FrameLayout? = null
 
     private var countdownTimer: CountDownTimer? = null
@@ -99,25 +103,93 @@ class AdmobNativeController(
                 return@runOnUiThread
             }
             val inflater = LayoutInflater.from(activity)
-            adView = inflater.inflate(layoutId, null) as NativeAdView
+//            adView = inflater.inflate(layoutId, null) as NativeAdView
+//
+//            handleProgress(adView);
+//
+//            // **BƯỚC 2 (Giống Google): Điền dữ liệu vào adView**
+//            populateNativeAdView(adToShow, adView)
+//
+//            // **BƯỚC 3 (Logic của chúng ta): Tìm hoặc tạo container**
+//            // Ví dụ của Google giả định container đã có sẵn. Chúng ta linh hoạt hơn.
+//            if (adContainer == null) {
+//                adContainer = FrameLayout(activity)
+//                val rootView = activity.findViewById<ViewGroup>(android.R.id.content)
+//                rootView.addView(adContainer)
+//            }
+//
+//            // **BƯỚC 4 (Giống Google): Thêm adView đã sẵn sàng vào container**
+//            adContainer?.removeAllViews()
+//            adContainer?.addView(adView)
+//
+//            adView?.setElevation(10f)
+//            adView?.bringToFront()
+//            adView?.setVisibility(View.VISIBLE)
 
-            handleProgress(adView);
+            val rootView = inflater.inflate(layoutId, null) as ViewGroup
 
-            // **BƯỚC 2 (Giống Google): Điền dữ liệu vào adView**
-            populateNativeAdView(adToShow, adView)
-
-            // **BƯỚC 3 (Logic của chúng ta): Tìm hoặc tạo container**
-            // Ví dụ của Google giả định container đã có sẵn. Chúng ta linh hoạt hơn.
-            if (adContainer == null) {
-                adContainer = FrameLayout(activity)
-                val rootView = activity.findViewById<ViewGroup>(android.R.id.content)
-                rootView.addView(adContainer)
+            // **THAY ĐỔI 2: Tìm NativeAdView bên trong view gốc**
+            val adView = rootView.findViewById<NativeAdView>(R.id.native_ad_view)
+            if (adView == null) {
+                Log.e(TAG, "NativeAdView with ID 'native_ad_view' not found inside the inflated layout!")
+                return@runOnUiThread
             }
 
-            // **BƯỚC 4 (Giống Google): Thêm adView đã sẵn sàng vào container**
-            adContainer?.removeAllViews()
-            adContainer?.addView(adView)
+            // Điền dữ liệu quảng cáo vào adView
+            populateNativeAdView(adToShow, adView)
+
+            // Tạo và hiển thị Dialog
+            adDialog?.dismiss()
+            val dialog = Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+
+            // **THAY ĐỔI 3: Đặt rootView (FrameLayout) làm nội dung cho Dialog**
+            dialog.setContentView(rootView)
+
+            dialog.setOnDismissListener {
+                if (loadedNativeAd != null) {
+                    callbacks.onAdClosed()
+                    destroyAd()
+                }
+            }
+
+            dialog.show()
+            this.adDialog = dialog
+
+            handleCountdown(rootView)
+
+
+
             Log.d(TAG, "Native ad view has been shown.")
+        }
+    }
+
+    private fun handleCountdown(rootView: ViewGroup) {
+        val closeButton = rootView.findViewById<ImageView>(R.id.ad_close_button)
+        val progressBar = rootView.findViewById<ProgressBar>(R.id.ad_progress_bar)
+        val countdownText = rootView.findViewById<TextView>(R.id.ad_countdown_text)
+
+        countdownTimer?.cancel()
+        closeButton?.visibility = View.GONE
+        progressBar?.visibility = View.VISIBLE
+        countdownText?.visibility = View.VISIBLE
+
+        countdownTimer = object : CountDownTimer(5000, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsRemaining = (millisUntilFinished / 1000).toInt() + 1
+                countdownText?.text = secondsRemaining.toString()
+                progressBar?.progress = (millisUntilFinished * 100 / 5000).toInt()
+            }
+
+            override fun onFinish() {
+                progressBar?.visibility = View.GONE
+                countdownText?.visibility = View.GONE
+                closeButton?.visibility = View.VISIBLE
+            }
+        }.start()
+
+        closeButton?.setOnClickListener {
+            callbacks.onAdClosed()
+            destroyAd()
         }
     }
 
@@ -165,9 +237,9 @@ class AdmobNativeController(
 
     fun destroyAd() {
         activity.runOnUiThread {
-            adContainer?.removeAllViews()
-            adContainer = null
-            adView = null
+            adDialog?.setOnDismissListener(null)
+            adDialog?.dismiss()
+            adDialog = null
         }
         loadedNativeAd?.destroy()
         loadedNativeAd = null

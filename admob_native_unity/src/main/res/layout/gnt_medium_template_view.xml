@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.gms.ads.nativead.NativeAdView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+
+    <com.google.android.gms.ads.nativead.NativeAdView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/native_ad_view"
     android:layout_width="match_parent"
-    android:layout_height="350dp"
+    android:layout_height="match_parent"
+        android:layout_marginStart="100dp"
+        android:layout_marginEnd="100dp"
     android:background="@drawable/gnt_outline_shape">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -12,7 +22,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_centerInParent="true"
-        android:padding="5dp"
+        android:padding="1dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -99,11 +109,11 @@
                             android:layout_marginTop="@dimen/gnt_no_margin"
                             android:layout_marginEnd="@dimen/gnt_no_margin"
                             android:layout_marginBottom="@dimen/gnt_no_margin"
-                            android:background="@color/gnt_white"
                             android:lines="1"
-                            android:textColor="@color/gnt_gray"
+                            android:textColor="@color/gnt_white"
                             android:textSize="@dimen/gnt_text_size_large"
                             android:textStyle="bold"
+                            android:text="ádqwfqwfqwfqw"
                             app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toEndOf="parent"
@@ -147,11 +157,10 @@
                             android:layout_marginTop="@dimen/gnt_no_margin"
                             android:layout_marginEnd="@dimen/gnt_no_margin"
                             android:layout_marginBottom="@dimen/gnt_no_margin"
-                            android:background="@android:color/transparent"
                             android:lines="1"
                             android:numStars="5"
                             android:stepSize="0.1"
-                            android:textColor="@color/gnt_gray"
+                            android:textColor="@color/gnt_white"
                             android:textSize="@dimen/gnt_text_size_small"
                             app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintEnd_toEndOf="parent"
@@ -194,8 +203,10 @@
             android:layout_margin="@dimen/gnt_no_size"
             android:layout_marginBottom="@dimen/gnt_small_margin"
             android:paddingStart="@dimen/gnt_default_margin"
+            android:text="21312312312312"
             android:paddingLeft="@dimen/gnt_default_margin"
             android:paddingBottom="@dimen/gnt_default_margin"
+            android:textColor="@color/gnt_white"
             app:layout_constraintBottom_toTopOf="@+id/cta"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -207,8 +218,9 @@
             android:layout_height="50dp"
             android:layout_marginLeft="5dp"
             android:layout_marginRight="5dp"
-            android:background="@color/gnt_blue"
+            android:background="@drawable/bg_btn_ads"
             android:gravity="center"
+            android:text="12312312312"
             android:lines="1"
             android:textColor="@color/gnt_white"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -259,3 +271,4 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.gms.ads.nativead.NativeAdView>
+</FrameLayout>
