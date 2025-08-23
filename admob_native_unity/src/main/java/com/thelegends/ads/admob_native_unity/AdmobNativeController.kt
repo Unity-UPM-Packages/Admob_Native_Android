@@ -141,6 +141,10 @@ class AdmobNativeController(
 
     fun isAdAvailable(): Boolean = loadedNativeAd != null
 
+    fun getResponseInfo(): ResponseInfo? {
+        return loadedNativeAd?.responseInfo
+    }
+
     private fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
         adView.mediaView = adView.findViewById(R.id.media_view)
         adView.headlineView = adView.findViewById(R.id.primary)
