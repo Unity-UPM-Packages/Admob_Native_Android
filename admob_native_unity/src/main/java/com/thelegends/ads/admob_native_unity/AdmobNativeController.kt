@@ -151,7 +151,6 @@ class AdmobNativeController(
         adView.advertiserView = adView.findViewById(R.id.secondary)
 //        adView.storeView = adView.findViewById(R.id.ad_store)
 //        adView.priceView = adView.findViewById(R.id.ad_price)
-        adView.mediaView?.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         // 2. Headline
         (adView.headlineView as? TextView)?.text = nativeAd.headline
