@@ -25,6 +25,7 @@ class AdmobNativeController(
     private var loadedNativeAd: NativeAd? = null
     private var rootView: View? = null
     private var countdownTimer: CountDownTimer? = null
+    private var countdownDurationMillis: Long = 5000
 
     private val TAG = "AdmobNativeController"
 
@@ -121,7 +122,6 @@ class AdmobNativeController(
         }
     }
 
-
     fun destroyAd() {
         activity.runOnUiThread {
             countdownTimer?.cancel()
@@ -143,6 +143,15 @@ class AdmobNativeController(
 
     fun getResponseInfo(): ResponseInfo? {
         return loadedNativeAd?.responseInfo
+    }
+
+    fun setCountdownDuration(durationSeconds: Float) {
+        if (durationSeconds > 0) {
+            this.countdownDurationMillis = (durationSeconds * 1000).toLong() // Chuyển đổi sang mili giây
+            Log.d(TAG, "Countdown duration updated to ${durationSeconds}s")
+        } else {
+            Log.w(TAG, "Invalid countdown duration received: $durationSeconds. Using default.")
+        }
     }
 
     private fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
@@ -278,11 +287,11 @@ class AdmobNativeController(
         progressBar?.visibility = View.VISIBLE
         countdownText?.visibility = View.VISIBLE
 
-        countdownTimer = object : CountDownTimer(5000, 1000) {
+        countdownTimer = object : CountDownTimer(countdownDurationMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val secondsRemaining = (millisUntilFinished / 1000).toInt() + 1
                 countdownText?.text = secondsRemaining.toString()
-                progressBar?.progress = (millisUntilFinished * 100 / 5000).toInt()
+                progressBar?.progress = (millisUntilFinished * 100 / countdownDurationMillis).toInt()
             }
 
             override fun onFinish() {
