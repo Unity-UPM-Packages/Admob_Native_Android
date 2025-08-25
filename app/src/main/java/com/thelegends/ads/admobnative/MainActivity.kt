@@ -92,14 +92,6 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
         Log.d(TAG, "CALLBACK RECEIVED: onAdClosed")
     }
 
-    override fun onAdShowedFullScreenContent() {
-        Log.d(TAG, "CALLBACK RECEIVED: onAdShowedFullScreenContent")
-    }
-
-    override fun onAdDismissedFullScreenContent() {
-        Log.d(TAG, "CALLBACK RECEIVED: onAdDismissedFullScreenContent")
-    }
-
     override fun onPaidEvent(precisionType: Int, valueMicros: Long, currencyCode: String) {
         val adValueString = "Value: ${valueMicros / 1000000.0} $currencyCode, Precision: $precisionType"
         Log.d(TAG, "CALLBACK RECEIVED: onPaidEvent - $adValueString")

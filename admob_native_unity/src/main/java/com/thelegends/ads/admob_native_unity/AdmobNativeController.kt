@@ -71,16 +71,6 @@ class AdmobNativeController(
                     callbacks.onAdDidRecordImpression()
                     Log.d(TAG, "Ad impression recorded.")
                 }
-
-                override fun onAdOpened() {
-                    callbacks.onAdShowedFullScreenContent()
-                    Log.d(TAG, "Ad show full screen content.")
-                }
-
-                override fun onAdClosed() {
-                    callbacks.onAdDismissedFullScreenContent()
-                    Log.d(TAG, "Ad dismissed full screen content.")
-                }
             })
             .withNativeAdOptions(adOptions)
             .build()
