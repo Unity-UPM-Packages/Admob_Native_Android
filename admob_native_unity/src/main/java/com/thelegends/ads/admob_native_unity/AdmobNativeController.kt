@@ -2,9 +2,9 @@
 package com.thelegends.admob_native_unity
 
 import android.app.Activity
+import android.content.Context
 import android.os.CountDownTimer
 import android.util.Log
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -15,7 +15,7 @@ import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
 import com.thelegends.ads.admob_native_unity.R
-import kotlinx.coroutines.Runnable
+import kotlinx.coroutines.*
 
 class AdmobNativeController(
     private val activity: Activity,
@@ -25,7 +25,11 @@ class AdmobNativeController(
     private var loadedNativeAd: NativeAd? = null
     private var rootView: View? = null
     private var countdownTimer: CountDownTimer? = null
-    private var countdownDurationMillis: Long = 5000
+
+    private var logicScope: CoroutineScope? = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var countdownTimerDurationMillis: Long = 5000
+    private var initialDelayBeforeCountdownMillis: Long = 5000
+    private var closeButtonClickableDelayMillis: Long = 2000
 
     private val TAG = "AdmobNativeController"
 
@@ -67,6 +71,16 @@ class AdmobNativeController(
                     callbacks.onAdDidRecordImpression()
                     Log.d(TAG, "Ad impression recorded.")
                 }
+
+                override fun onAdOpened() {
+                    callbacks.onAdShowedFullScreenContent()
+                    Log.d(TAG, "Ad show full screen content.")
+                }
+
+                override fun onAdClosed() {
+                    callbacks.onAdDismissedFullScreenContent()
+                    Log.d(TAG, "Ad dismissed full screen content.")
+                }
             })
             .withNativeAdOptions(adOptions)
             .build()
@@ -74,7 +88,7 @@ class AdmobNativeController(
     }
 
     fun showAd(layoutName: String) {
-
+        val adToShow = loadedNativeAd ?: return
         this.activity.runOnUiThread {
             if (loadedNativeAd == null) return@runOnUiThread
 
@@ -85,13 +99,15 @@ class AdmobNativeController(
             )
 
             if (layoutId == 0) {
-                // Log lại lỗi để dễ dàng debug và thoát hàm một cách an toàn
                 Log.e(TAG, "Layout resource not found for name: $layoutName. Ad will not be shown.")
                 return@runOnUiThread
             }
 
-            rootView = activity.layoutInflater.inflate(layoutId, null)
-            val nativeAdView = rootView?.findViewById<NativeAdView>(R.id.native_ad_view)
+
+            val inflatedView = activity.layoutInflater.inflate(layoutId, null);
+            rootView = inflatedView
+
+            val nativeAdView = inflatedView?.findViewById<NativeAdView>(R.id.native_ad_view) ?: return@runOnUiThread
 
 
             var layout: FrameLayout? = activity.findViewById(R.id.native_ad_view)
@@ -105,20 +121,13 @@ class AdmobNativeController(
                 layout.removeAllViews()
             }
 
-            val currentAd = loadedNativeAd
-            val view = rootView;
-            if (currentAd != null && nativeAdView != null && view != null) {
 
-                view.visibility = View.VISIBLE
-                populateNativeAdView(currentAd, nativeAdView)
+            populateNativeAdView(adToShow, nativeAdView)
+            layout.addView(inflatedView)
+            startCloseLogic(inflatedView);
+            nativeAdView.elevation = 10f
+            nativeAdView.bringToFront()
 
-                layout.addView(rootView)
-
-                handleCountdown(view)
-
-                nativeAdView.elevation = 10f
-                nativeAdView.bringToFront()
-            }
         }
     }
 
@@ -127,13 +136,12 @@ class AdmobNativeController(
             countdownTimer?.cancel()
             countdownTimer = null
 
-            if (rootView != null) {
-                (rootView?.parent as? ViewGroup)?.removeView(rootView)
-            }
+            logicScope?.cancel()
+            logicScope = null
 
+            (rootView?.parent as? ViewGroup)?.removeView(rootView)
             rootView = null
         }
-
         loadedNativeAd?.destroy()
         loadedNativeAd = null
         Log.d(TAG, "Native ad has been destroyed.")
@@ -145,25 +153,50 @@ class AdmobNativeController(
         return loadedNativeAd?.responseInfo
     }
 
-    fun setCountdownDuration(durationSeconds: Float) {
+    fun setCountdownTimerDuration(durationSeconds: Float) {
         if (durationSeconds > 0) {
-            this.countdownDurationMillis = (durationSeconds * 1000).toLong() // Chuyển đổi sang mili giây
-            Log.d(TAG, "Countdown duration updated to ${durationSeconds}s")
+            this.countdownTimerDurationMillis = (durationSeconds * 1000).toLong()
+            Log.d(TAG, "Countdown Timer Duration updated to ${durationSeconds}s")
         } else {
-            Log.w(TAG, "Invalid countdown duration received: $durationSeconds. Using default.")
+            Log.w(TAG, "Invalid Countdown Timer Duration received: $durationSeconds. Using default.")
         }
     }
 
+    fun setInitialDelayBeforeCountdown(durationSeconds: Float) {
+        if (durationSeconds >= 0) {
+            this.initialDelayBeforeCountdownMillis = (durationSeconds * 1000).toLong()
+            Log.d(TAG, "Initial Delay Before Countdown updated to ${durationSeconds}s")
+        } else {
+            Log.w(TAG, "Invalid Initial Delay received: $durationSeconds. Using default.")
+        }
+    }
+
+    fun setCloseButtonClickableDelay(durationSeconds: Float) {
+        if (durationSeconds >= 0) {
+            this.closeButtonClickableDelayMillis = (durationSeconds * 1000).toLong()
+            Log.d(TAG, "Close Button Clickable Delay updated to ${durationSeconds}s")
+        } else {
+            Log.w(TAG, "Invalid Close Button Clickable Delay received: $durationSeconds. Using default.")
+        }
+    }
+
+    private fun findViewId(context: Context, name: String): Int {
+        return context.resources.getIdentifier(name, "id", context.packageName)
+    }
+
+
     private fun populateNativeAdView(nativeAd: NativeAd, adView: NativeAdView) {
-        adView.mediaView = adView.findViewById(R.id.media_view)
-        adView.headlineView = adView.findViewById(R.id.primary)
-        adView.bodyView = adView.findViewById(R.id.body)
-        adView.callToActionView = adView.findViewById(R.id.cta)
-        adView.iconView = adView.findViewById(R.id.icon)
-        adView.starRatingView = adView.findViewById(R.id.rating_bar)
-        adView.advertiserView = adView.findViewById(R.id.secondary)
-//        adView.storeView = adView.findViewById(R.id.ad_store)
-//        adView.priceView = adView.findViewById(R.id.ad_price)
+        val context = adView.context
+
+        adView.mediaView = adView.findViewById(findViewId(context, "media_view"))
+        adView.headlineView = adView.findViewById(findViewId(context, "primary"))
+        adView.bodyView = adView.findViewById(findViewId(context, "body"))
+        adView.callToActionView = adView.findViewById(findViewId(context, "cta"))
+        adView.iconView = adView.findViewById(findViewId(context, "icon"))
+        adView.starRatingView = adView.findViewById(findViewId(context, "rating_bar"))
+        adView.advertiserView = adView.findViewById(findViewId(context, "secondary"))
+        adView.storeView = adView.findViewById(findViewId(context,"ad_store"))
+        adView.priceView = adView.findViewById(findViewId(context,"ad_price"))
 
         // 2. Headline
         (adView.headlineView as? TextView)?.text = nativeAd.headline
@@ -214,22 +247,22 @@ class AdmobNativeController(
         }
 
         // 8. Store
-//        val storeView = adView.storeView as? TextView
-//        if (nativeAd.store != null) {
-//            storeView?.text = nativeAd.store
-//            storeView?.visibility = android.view.View.VISIBLE
-//        } else {
-//            storeView?.visibility = android.view.View.INVISIBLE
-//        }
-//
-//        // 9. Price
-//        val priceView = adView.priceView as? TextView
-//        if (nativeAd.price != null) {
-//            priceView?.text = nativeAd.price
-//            priceView?.visibility = android.view.View.VISIBLE
-//        } else {
-//            priceView?.visibility = android.view.View.INVISIBLE
-//        }
+        val storeView = adView.storeView as? TextView
+        if (nativeAd.store != null) {
+            storeView?.text = nativeAd.store
+            storeView?.visibility = android.view.View.VISIBLE
+        } else {
+            storeView?.visibility = android.view.View.INVISIBLE
+        }
+
+        // 9. Price
+        val priceView = adView.priceView as? TextView
+        if (nativeAd.price != null) {
+            priceView?.text = nativeAd.price
+            priceView?.visibility = android.view.View.VISIBLE
+        } else {
+            priceView?.visibility = android.view.View.INVISIBLE
+        }
 
         adView.setNativeAd(nativeAd)
 
@@ -277,34 +310,55 @@ class AdmobNativeController(
         }
     }
 
-    private fun handleCountdown(rootView: View) {
+    private fun startCloseLogic(rootView: View) {
         val closeButton = rootView.findViewById<ImageView>(R.id.ad_close_button)
         val progressBar = rootView.findViewById<ProgressBar>(R.id.ad_progress_bar)
         val countdownText = rootView.findViewById<TextView>(R.id.ad_countdown_text)
 
         countdownTimer?.cancel()
+
+        logicScope?.cancel()
+        logicScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
         closeButton?.visibility = View.GONE
-        progressBar?.visibility = View.VISIBLE
-        countdownText?.visibility = View.VISIBLE
+        progressBar?.visibility = View.GONE
+        countdownText?.visibility = View.GONE
+        closeButton?.isClickable = false
 
-        countdownTimer = object : CountDownTimer(countdownDurationMillis, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                val secondsRemaining = (millisUntilFinished / 1000).toInt() + 1
-                countdownText?.text = secondsRemaining.toString()
-                progressBar?.progress = (millisUntilFinished * 100 / countdownDurationMillis).toInt()
+        var canCloseBtnClick = false;
+
+        logicScope?.launch {
+
+            delay(initialDelayBeforeCountdownMillis)
+
+            progressBar?.visibility = View.VISIBLE
+            countdownText?.visibility = View.VISIBLE
+
+
+            for (i in countdownTimerDurationMillis / 1000 downTo 1) {
+                countdownText?.text = i.toString()
+                progressBar?.progress = (i * 1000 * 100 / countdownTimerDurationMillis).toInt()
+                delay(1000)
             }
 
-            override fun onFinish() {
-                progressBar?.visibility = View.GONE
-                countdownText?.visibility = View.GONE
-                closeButton?.visibility = View.VISIBLE
-            }
-        }.start()
+            progressBar?.visibility = View.GONE
+            countdownText?.visibility = View.GONE
+            closeButton?.visibility = View.VISIBLE
+
+            delay(closeButtonClickableDelayMillis)
+
+            closeButton?.isClickable = true
+            canCloseBtnClick = closeButton.isClickable
+
+            Log.d(TAG, "Close button is now clickable.")
+        }
 
         closeButton?.setOnClickListener {
-            destroyAd()
-            callbacks.onAdClosed()
-            Log.d(TAG, "Ad Closed")
+            if (canCloseBtnClick) {
+                destroyAd()
+                callbacks.onAdClosed()
+                Log.d(TAG, "Ad Closed by user.")
+            }
         }
     }
 }
