@@ -306,49 +306,28 @@ class AdmobNativeController(
         val countdownText = rootView.findViewById<TextView>(R.id.ad_countdown_text)
 
         countdownTimer?.cancel()
-
-        logicScope?.cancel()
-        logicScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-
         closeButton?.visibility = View.GONE
-        progressBar?.visibility = View.GONE
-        countdownText?.visibility = View.GONE
-        closeButton?.isClickable = false
+        progressBar?.visibility = View.VISIBLE
+        countdownText?.visibility = View.VISIBLE
 
-        var canCloseBtnClick = false;
-
-        logicScope?.launch {
-
-            delay(initialDelayBeforeCountdownMillis)
-
-            progressBar?.visibility = View.VISIBLE
-            countdownText?.visibility = View.VISIBLE
-
-
-            for (i in countdownTimerDurationMillis / 1000 downTo 1) {
-                countdownText?.text = i.toString()
-                progressBar?.progress = (i * 1000 * 100 / countdownTimerDurationMillis).toInt()
-                delay(1000)
+        countdownTimer = object : CountDownTimer(countdownTimerDurationMillis, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsRemaining = (millisUntilFinished / 1000).toInt() + 1
+                countdownText?.text = secondsRemaining.toString()
+                progressBar?.progress = (millisUntilFinished * 100 / countdownTimerDurationMillis).toInt()
             }
 
-            progressBar?.visibility = View.GONE
-            countdownText?.visibility = View.GONE
-            closeButton?.visibility = View.VISIBLE
-
-            delay(closeButtonClickableDelayMillis)
-
-            closeButton?.isClickable = true
-            canCloseBtnClick = closeButton.isClickable
-
-            Log.d(TAG, "Close button is now clickable.")
-        }
+            override fun onFinish() {
+                progressBar?.visibility = View.GONE
+                countdownText?.visibility = View.GONE
+                closeButton?.visibility = View.VISIBLE
+            }
+        }.start()
 
         closeButton?.setOnClickListener {
-            if (canCloseBtnClick) {
-                destroyAd()
-                callbacks.onAdClosed()
-                Log.d(TAG, "Ad Closed by user.")
-            }
+            destroyAd()
+            callbacks.onAdClosed()
+            Log.d(TAG, "Ad Closed")
         }
     }
 }
