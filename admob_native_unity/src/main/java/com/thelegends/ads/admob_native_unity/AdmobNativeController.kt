@@ -3,7 +3,7 @@ package com.thelegends.admob_native_unity
 
 import android.app.Activity
 import android.content.Context
-import android.os.CountDownTimer
+import com.orbitalsonic.sonictimer.SonicCountDownTimer
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -15,7 +15,6 @@ import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
 import com.thelegends.ads.admob_native_unity.R
-import kotlinx.coroutines.*
 
 class AdmobNativeController(
     private val activity: Activity,
@@ -24,9 +23,8 @@ class AdmobNativeController(
 
     private var loadedNativeAd: NativeAd? = null
     private var rootView: View? = null
-    private var countdownTimer: CountDownTimer? = null
+    private var countdownTimer: SonicCountDownTimer? = null
 
-    private var logicScope: CoroutineScope? = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var countdownTimerDurationMillis: Long = 5000
     private var initialDelayBeforeCountdownMillis: Long = 5000
     private var closeButtonClickableDelayMillis: Long = 2000
@@ -123,11 +121,8 @@ class AdmobNativeController(
 
     fun destroyAd() {
         activity.runOnUiThread {
-            countdownTimer?.cancel()
+            countdownTimer?.cancelCountDownTimer()
             countdownTimer = null
-
-            logicScope?.cancel()
-            logicScope = null
 
             (rootView?.parent as? ViewGroup)?.removeView(rootView)
             rootView = null
@@ -305,24 +300,25 @@ class AdmobNativeController(
         val progressBar = rootView.findViewById<ProgressBar>(R.id.ad_progress_bar)
         val countdownText = rootView.findViewById<TextView>(R.id.ad_countdown_text)
 
-        countdownTimer?.cancel()
+        countdownTimer?.cancelCountDownTimer()
         closeButton?.visibility = View.GONE
         progressBar?.visibility = View.VISIBLE
         countdownText?.visibility = View.VISIBLE
 
-        countdownTimer = object : CountDownTimer(countdownTimerDurationMillis, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                val secondsRemaining = (millisUntilFinished / 1000).toInt() + 1
+        countdownTimer = object : SonicCountDownTimer(countdownTimerDurationMillis, 1000) {
+            override fun onTimerTick(timeRemaining: Long) {
+                val secondsRemaining = (timeRemaining / 1000).toInt() + 1
                 countdownText?.text = secondsRemaining.toString()
-                progressBar?.progress = (millisUntilFinished * 100 / countdownTimerDurationMillis).toInt()
+                progressBar?.progress = ((countdownTimerDurationMillis - timeRemaining) * 100 / countdownTimerDurationMillis).toInt()
             }
 
-            override fun onFinish() {
+            override fun onTimerFinish() {
                 progressBar?.visibility = View.GONE
                 countdownText?.visibility = View.GONE
                 closeButton?.visibility = View.VISIBLE
             }
-        }.start()
+        }
+        countdownTimer?.startCountDownTimer()
 
         closeButton?.setOnClickListener {
             destroyAd()
