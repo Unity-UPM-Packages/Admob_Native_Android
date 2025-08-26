@@ -23,7 +23,10 @@ class AdmobNativeController(
 
     private var loadedNativeAd: NativeAd? = null
     private var rootView: View? = null
+    // Three sequential timers
+    private var initialDelayTimer: SonicCountDownTimer? = null
     private var countdownTimer: SonicCountDownTimer? = null
+    private var closeButtonDelayTimer: SonicCountDownTimer? = null
 
     private var countdownTimerDurationMillis: Long = 5000
     private var initialDelayBeforeCountdownMillis: Long = 5000
@@ -121,8 +124,15 @@ class AdmobNativeController(
 
     fun destroyAd() {
         activity.runOnUiThread {
+            // Cancel all timers
+            initialDelayTimer?.cancelCountDownTimer()
+            initialDelayTimer = null
+            
             countdownTimer?.cancelCountDownTimer()
             countdownTimer = null
+            
+            closeButtonDelayTimer?.cancelCountDownTimer()
+            closeButtonDelayTimer = null
 
             (rootView?.parent as? ViewGroup)?.removeView(rootView)
             rootView = null
@@ -163,6 +173,41 @@ class AdmobNativeController(
         } else {
             Log.w(TAG, "Invalid Close Button Clickable Delay received: $durationSeconds. Using default.")
         }
+    }
+
+    // Timer control methods
+    fun pauseAllTimers() {
+        initialDelayTimer?.pauseCountDownTimer()
+        countdownTimer?.pauseCountDownTimer()
+        closeButtonDelayTimer?.pauseCountDownTimer()
+        Log.d(TAG, "All timers paused")
+    }
+
+    fun resumeAllTimers() {
+        initialDelayTimer?.resumeCountDownTimer()
+        countdownTimer?.resumeCountDownTimer()
+        closeButtonDelayTimer?.resumeCountDownTimer()
+        Log.d(TAG, "All timers resumed")
+    }
+
+    fun getCurrentTimerPhase(): String {
+        return when {
+            initialDelayTimer?.isTimerRunning() == true -> "Phase 1: Initial Delay"
+            countdownTimer?.isTimerRunning() == true -> "Phase 2: Main Countdown" 
+            closeButtonDelayTimer?.isTimerRunning() == true -> "Phase 3: Close Button Delay"
+            else -> "No Active Timer"
+        }
+    }
+
+    fun getTimerStates(): Map<String, Boolean> {
+        return mapOf(
+            "initialDelayTimer_running" to (initialDelayTimer?.isTimerRunning() ?: false),
+            "initialDelayTimer_paused" to (initialDelayTimer?.isTimerPaused() ?: false),
+            "countdownTimer_running" to (countdownTimer?.isTimerRunning() ?: false),
+            "countdownTimer_paused" to (countdownTimer?.isTimerPaused() ?: false),
+            "closeButtonDelayTimer_running" to (closeButtonDelayTimer?.isTimerRunning() ?: false),
+            "closeButtonDelayTimer_paused" to (closeButtonDelayTimer?.isTimerPaused() ?: false)
+        )
     }
 
     private fun findViewId(context: Context, name: String): Int {
@@ -300,11 +345,51 @@ class AdmobNativeController(
         val progressBar = rootView.findViewById<ProgressBar>(R.id.ad_progress_bar)
         val countdownText = rootView.findViewById<TextView>(R.id.ad_countdown_text)
 
+        // Cancel any existing timers
+        initialDelayTimer?.cancelCountDownTimer()
         countdownTimer?.cancelCountDownTimer()
+        closeButtonDelayTimer?.cancelCountDownTimer()
+
+        // PHASE 1: Initial state - Hide everything
         closeButton?.visibility = View.GONE
+        progressBar?.visibility = View.GONE
+        countdownText?.visibility = View.GONE
+        closeButton?.isClickable = false
+
+        Log.d(TAG, "Starting Phase 1: Initial delay (${initialDelayBeforeCountdownMillis}ms)")
+
+        // TIMER 1: Initial delay before showing progress/countdown
+        initialDelayTimer = object : SonicCountDownTimer(initialDelayBeforeCountdownMillis, 100) {
+            override fun onTimerTick(timeRemaining: Long) {
+                // Silent countdown, no UI updates
+            }
+
+            override fun onTimerFinish() {
+                Log.d(TAG, "Phase 1 completed. Starting Phase 2: Main countdown")
+                startMainCountdown(closeButton, progressBar, countdownText)
+            }
+        }
+        initialDelayTimer?.startCountDownTimer()
+
+        // Setup close button click listener (will only work when enabled)
+        closeButton?.setOnClickListener {
+            if (closeButton.isClickable) {
+                destroyAd()
+                callbacks.onAdClosed()
+                Log.d(TAG, "Ad Closed")
+            }
+        }
+    }
+
+    private fun startMainCountdown(closeButton: ImageView?, progressBar: ProgressBar?, countdownText: TextView?) {
+        // PHASE 2: Show progress bar and countdown text
         progressBar?.visibility = View.VISIBLE
         countdownText?.visibility = View.VISIBLE
+        closeButton?.visibility = View.GONE
 
+        Log.d(TAG, "Starting main countdown (${countdownTimerDurationMillis}ms)")
+
+        // TIMER 2: Main countdown timer
         countdownTimer = object : SonicCountDownTimer(countdownTimerDurationMillis, 1000) {
             override fun onTimerTick(timeRemaining: Long) {
                 val secondsRemaining = (timeRemaining / 1000).toInt() + 1
@@ -313,17 +398,33 @@ class AdmobNativeController(
             }
 
             override fun onTimerFinish() {
-                progressBar?.visibility = View.GONE
-                countdownText?.visibility = View.GONE
-                closeButton?.visibility = View.VISIBLE
+                Log.d(TAG, "Phase 2 completed. Starting Phase 3: Close button delay")
+                startCloseButtonDelay(closeButton, progressBar, countdownText)
             }
         }
         countdownTimer?.startCountDownTimer()
+    }
 
-        closeButton?.setOnClickListener {
-            destroyAd()
-            callbacks.onAdClosed()
-            Log.d(TAG, "Ad Closed")
+    private fun startCloseButtonDelay(closeButton: ImageView?, progressBar: ProgressBar?, countdownText: TextView?) {
+        // PHASE 3: Show close button but keep it non-clickable for a delay
+        progressBar?.visibility = View.GONE
+        countdownText?.visibility = View.GONE
+        closeButton?.visibility = View.VISIBLE
+        closeButton?.isClickable = false
+
+        Log.d(TAG, "Starting close button delay (${closeButtonClickableDelayMillis}ms)")
+
+        // TIMER 3: Close button clickable delay
+        closeButtonDelayTimer = object : SonicCountDownTimer(closeButtonClickableDelayMillis, 100) {
+            override fun onTimerTick(timeRemaining: Long) {
+                // Silent countdown, no UI updates
+            }
+
+            override fun onTimerFinish() {
+                Log.d(TAG, "Phase 3 completed. Close button is now clickable")
+                closeButton?.isClickable = true
+            }
         }
+        closeButtonDelayTimer?.startCountDownTimer()
     }
 }
