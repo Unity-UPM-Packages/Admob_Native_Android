@@ -240,8 +240,8 @@
             <ProgressBar
                 android:id="@+id/ad_progress_bar"
                 style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:progress="100"
                 android:progressDrawable="@drawable/circular_progress_bar"
                 android:indeterminate="false"
@@ -250,15 +250,14 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginEnd="17dp" />
 
-
-
             <TextView
                 android:id="@+id/ad_countdown_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/icon_grey"
-                android:textSize="20sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
+                android:gravity="center"
                 tools:text="5"
                 app:layout_constraintTop_toTopOf="@id/ad_progress_bar"
                 app:layout_constraintBottom_toBottomOf="@id/ad_progress_bar"

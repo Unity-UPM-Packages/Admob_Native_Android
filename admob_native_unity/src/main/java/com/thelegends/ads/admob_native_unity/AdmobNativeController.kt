@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import com.orbitalsonic.sonictimer.SonicCountDownTimer
 import android.util.Log
+import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -115,11 +116,39 @@ class AdmobNativeController(
 
             populateNativeAdView(adToShow, nativeAdView)
             layout.addView(inflatedView)
-            startCloseLogic(inflatedView);
+            
+            // Hide timing UI elements for simple showAd
+            val closeButton = inflatedView.findViewById<ImageView>(R.id.ad_close_button)
+            val progressBar = inflatedView.findViewById<ProgressBar>(R.id.ad_progress_bar)
+            val countdownText = inflatedView.findViewById<TextView>(R.id.ad_countdown_text)
+            
+            closeButton?.visibility = View.GONE
+            progressBar?.visibility = View.GONE
+            countdownText?.visibility = View.GONE
+            
             nativeAdView.elevation = 10f
             nativeAdView.bringToFront()
 
         }
+    }
+
+    fun showAd(
+        layoutName: String, 
+        initialDelaySeconds: Float, 
+        countdownDurationSeconds: Float, 
+        closeButtonDelaySeconds: Float
+    ) {
+
+        // Set the custom timings using existing setter methods
+        setInitialDelayBeforeCountdown(initialDelaySeconds)
+        setCountdownTimerDuration(countdownDurationSeconds)
+        setCloseButtonClickableDelay(closeButtonDelaySeconds)
+        
+        // Call the main showAd method
+        showAd(layoutName)
+
+        // Cast rootView back to View for timing logic
+        rootView?.let { startCloseLogic(it) }
     }
 
     fun destroyAd() {
@@ -173,41 +202,6 @@ class AdmobNativeController(
         } else {
             Log.w(TAG, "Invalid Close Button Clickable Delay received: $durationSeconds. Using default.")
         }
-    }
-
-    // Timer control methods
-    fun pauseAllTimers() {
-        initialDelayTimer?.pauseCountDownTimer()
-        countdownTimer?.pauseCountDownTimer()
-        closeButtonDelayTimer?.pauseCountDownTimer()
-        Log.d(TAG, "All timers paused")
-    }
-
-    fun resumeAllTimers() {
-        initialDelayTimer?.resumeCountDownTimer()
-        countdownTimer?.resumeCountDownTimer()
-        closeButtonDelayTimer?.resumeCountDownTimer()
-        Log.d(TAG, "All timers resumed")
-    }
-
-    fun getCurrentTimerPhase(): String {
-        return when {
-            initialDelayTimer?.isTimerRunning() == true -> "Phase 1: Initial Delay"
-            countdownTimer?.isTimerRunning() == true -> "Phase 2: Main Countdown" 
-            closeButtonDelayTimer?.isTimerRunning() == true -> "Phase 3: Close Button Delay"
-            else -> "No Active Timer"
-        }
-    }
-
-    fun getTimerStates(): Map<String, Boolean> {
-        return mapOf(
-            "initialDelayTimer_running" to (initialDelayTimer?.isTimerRunning() ?: false),
-            "initialDelayTimer_paused" to (initialDelayTimer?.isTimerPaused() ?: false),
-            "countdownTimer_running" to (countdownTimer?.isTimerRunning() ?: false),
-            "countdownTimer_paused" to (countdownTimer?.isTimerPaused() ?: false),
-            "closeButtonDelayTimer_running" to (closeButtonDelayTimer?.isTimerRunning() ?: false),
-            "closeButtonDelayTimer_paused" to (closeButtonDelayTimer?.isTimerPaused() ?: false)
-        )
     }
 
     private fun findViewId(context: Context, name: String): Int {
@@ -383,6 +377,8 @@ class AdmobNativeController(
 
     private fun startMainCountdown(closeButton: ImageView?, progressBar: ProgressBar?, countdownText: TextView?) {
         // PHASE 2: Show progress bar and countdown text
+        progressBar?.progress = 100  // Start from 100% and decrease
+
         progressBar?.visibility = View.VISIBLE
         countdownText?.visibility = View.VISIBLE
         closeButton?.visibility = View.GONE
@@ -392,9 +388,19 @@ class AdmobNativeController(
         // TIMER 2: Main countdown timer
         countdownTimer = object : SonicCountDownTimer(countdownTimerDurationMillis, 1000) {
             override fun onTimerTick(timeRemaining: Long) {
-                val secondsRemaining = (timeRemaining / 1000).toInt() + 1
+                val secondsRemaining = (timeRemaining / 1000).toInt()
+                
+                // Stop showing countdown when it reaches 0, move to next phase immediately
+                if (secondsRemaining <= 0) {
+                    onTimerFinish()
+                    return
+                }
+                
                 countdownText?.text = secondsRemaining.toString()
-                progressBar?.progress = ((countdownTimerDurationMillis - timeRemaining) * 100 / countdownTimerDurationMillis).toInt()
+                
+                // Progress decreases from 100% to 0% to show remaining time
+                val progressPercent = (timeRemaining * 100 / countdownTimerDurationMillis).toInt().coerceAtLeast(0)
+                progressBar?.progress = progressPercent
             }
 
             override fun onTimerFinish() {
