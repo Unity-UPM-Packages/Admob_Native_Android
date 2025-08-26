@@ -121,4 +121,12 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
     override fun onVideoPause() {
         Log.d(TAG, "CALLBACK RECEIVED: onVideoPause")
     }
+
+    override fun onAdShowedFullScreenContent() {
+        Log.d(TAG, "CALLBACK RECEIVED: onAdShowedFullScreenContent")
+    }
+
+    override fun onAdDismissedFullScreenContent() {
+        Log.d(TAG, "CALLBACK RECEIVED: onAdDismissedFullScreenContent")
+    }
 }
