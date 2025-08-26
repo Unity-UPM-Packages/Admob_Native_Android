@@ -139,16 +139,18 @@ class AdmobNativeController(
         closeButtonDelaySeconds: Float
     ) {
 
-        // Set the custom timings using existing setter methods
-        setInitialDelayBeforeCountdown(initialDelaySeconds)
-        setCountdownTimerDuration(countdownDurationSeconds)
-        setCloseButtonClickableDelay(closeButtonDelaySeconds)
-        
-        // Call the main showAd method
-        showAd(layoutName)
+        activity.runOnUiThread {
+            // Set the custom timings using existing setter methods
+            setInitialDelayBeforeCountdown(initialDelaySeconds)
+            setCountdownTimerDuration(countdownDurationSeconds)
+            setCloseButtonClickableDelay(closeButtonDelaySeconds)
 
-        // Cast rootView back to View for timing logic
-        rootView?.let { startCloseLogic(it) }
+            // Call the main showAd method
+            showAd(layoutName)
+
+            // Cast rootView back to View for timing logic
+            rootView?.let { startCloseLogic(it) }
+        }
     }
 
     fun destroyAd() {
