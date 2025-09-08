@@ -1,4 +1,4 @@
-package com.thelegends.ads.admob_native_unity.showbehavior
+package com.thelegends.ads.admob_native_unity.decorator
 
 import android.app.Activity
 import android.view.View
@@ -9,6 +9,7 @@ import com.google.android.gms.ads.nativead.NativeAd
 import com.orbitalsonic.sonictimer.SonicCountDownTimer
 import com.thelegends.admob_native_unity.NativeAdCallbacks
 import com.thelegends.ads.admob_native_unity.R
+import com.thelegends.ads.admob_native_unity.showbehavior.*
 
 class CountdownDecorator (
     private val wrappedBehavior: BaseShowBehavior,

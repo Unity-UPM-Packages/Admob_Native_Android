@@ -5,6 +5,7 @@ import android.app.Activity
 import android.util.Log
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
+import com.thelegends.ads.admob_native_unity.decorator.*
 import com.thelegends.ads.admob_native_unity.showbehavior.*
 
 class AdmobNativeController(

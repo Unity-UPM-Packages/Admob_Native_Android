@@ -3,7 +3,7 @@ package com.thelegends.admob_native_unity
 import android.app.Activity
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.nativead.NativeAd
-import com.thelegends.ads.admob_native_unity.showbehavior.BaseShowBehavior
+import com.thelegends.ads.admob_native_unity.showbehavior.*
 
 
 class ShowOnLoadedDecorator(
