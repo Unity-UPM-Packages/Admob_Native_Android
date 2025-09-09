@@ -11,4 +11,5 @@
   <color name="gnt_gray">#808080</color>
   <color name="gnt_outline">#E0E0E0</color>
   <color name="icon_grey">#8A8A8A</color>
+  <color name="cta_text_banner_color">#213522</color>
 </resources>
