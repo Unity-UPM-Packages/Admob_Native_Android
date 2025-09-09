@@ -18,6 +18,8 @@ open class BaseShowBehavior : IShowBehavior {
     internal var rootView: View? = null
         private set
 
+    private var activityRef: java.lang.ref.WeakReference<Activity>? = null
+
 
     override fun show(
         activity: Activity,
@@ -25,6 +27,8 @@ open class BaseShowBehavior : IShowBehavior {
         layoutName: String,
         callbacks: NativeAdCallbacks
     ) {
+        this.activityRef = java.lang.ref.WeakReference(activity)
+
         activity.runOnUiThread {
             val layoutId = activity.resources.getIdentifier(
                 layoutName,
@@ -64,9 +68,13 @@ open class BaseShowBehavior : IShowBehavior {
     }
 
     override fun destroy() {
-        (rootView?.parent as? ViewGroup)?.removeView(rootView)
-        rootView = null
-        Log.d(TAG, "Base Ad view has been destroyed.")
+        val activity = activityRef?.get() ?: return
+        activity.runOnUiThread {
+            (rootView?.parent as? ViewGroup)?.removeView(rootView)
+            rootView = null
+            Log.d(TAG, "Base Ad view has been destroyed.")
+        }
+
     }
 
     private fun findViewId(context: Context, name: String): Int {
