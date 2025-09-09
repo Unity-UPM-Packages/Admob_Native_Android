@@ -64,10 +64,7 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
         showAdButton.setOnClickListener {
             if (admobNativeController.isAdAvailable()) {
                 Log.d(TAG, "Show Ad button clicked. Showing the ad...")
-              admobNativeController
-                  .withAutoReload(TEST_AD_UNIT_ID, 5)
-                  .withShowOnLoaded(true)
-                  .showAd(NATIVE_LAYOUT_NAME)
+              admobNativeController.showAd(NATIVE_LAYOUT_NAME)
             } else {
                 Toast.makeText(this, "Ad not available yet. Please load first.", Toast.LENGTH_SHORT).show()
                 Log.d(TAG, "Show Ad button clicked, but ad is not available.")

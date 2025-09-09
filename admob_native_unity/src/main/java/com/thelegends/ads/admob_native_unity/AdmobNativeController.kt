@@ -20,18 +20,7 @@ class AdmobNativeController(
 
     fun loadAd(adUnitId: String, adRequest: AdRequest) {
         destroyAd()
-        internalLoadAd(adUnitId, adRequest)
-    }
 
-    fun reloadAd(adUnitId: String, adRequest: AdRequest) {
-
-        loadedNativeAd?.destroy()
-        loadedNativeAd = null
-
-        internalLoadAd(adUnitId, adRequest)
-    }
-
-    private fun internalLoadAd(adUnitId: String, adRequest: AdRequest) {
         Log.d(TAG, "Loading native ad for Ad Unit ID: $adUnitId")
 
         val videoOptions = VideoOptions.Builder()
@@ -109,14 +98,6 @@ class AdmobNativeController(
                 countdownConfig!!.duration,
                 countdownConfig!!.closeDelay
             )
-        }
-
-        if (reloadConfig != null) {
-            behavior = AutoReloadDecorator(behavior, reloadConfig!!.adUnitId, reloadConfig!!.intervalSeconds, this)
-        }
-
-        if (showOnLoadConfig?.enabled == true) {
-            behavior = ShowOnLoadedDecorator(behavior, layoutName, this)
         }
 
         // Thực thi
@@ -214,40 +195,8 @@ class AdmobNativeController(
 
     //endregion
 
-    //region Auto Reload
-
-    private data class ReloadConfig(val adUnitId: String, val intervalSeconds: Long)
-
-    private var reloadConfig: ReloadConfig? = null
-
-    fun withAutoReload(adUnitId: String, intervalSeconds: Long): AdmobNativeController {
-        if (intervalSeconds > 0 && adUnitId.isNotBlank()) {
-            this.reloadConfig = ReloadConfig(adUnitId, intervalSeconds)
-            Log.d(TAG, "Auto-reload configured for ad unit '$adUnitId' after ${intervalSeconds}s.")
-        } else {
-            Log.w(TAG, "Invalid auto-reload config. AdUnitId must not be blank and interval must be > 0.")
-        }
-        return this
-    }
-
-    //endregion
-
-    //region Show On Loaded
-    private data class ShowOnLoadConfig(val enabled: Boolean)
-
-    private var showOnLoadConfig: ShowOnLoadConfig? = null
-
-    fun withShowOnLoaded(enabled: Boolean): AdmobNativeController {
-        this.showOnLoadConfig = ShowOnLoadConfig(enabled)
-        return this
-    }
-
-    //endregion
-
     private fun resetAllConfigs() {
         countdownConfig = null
-        reloadConfig = null
-        showOnLoadConfig = null
     }
 
     private val internalCallbackListeners = mutableListOf<NativeAdCallbacks>()
