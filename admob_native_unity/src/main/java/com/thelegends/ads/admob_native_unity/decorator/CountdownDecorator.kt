@@ -1,6 +1,7 @@
 package com.thelegends.ads.admob_native_unity.decorator
 
 import android.app.Activity
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -32,10 +33,12 @@ class CountdownDecorator (
         layoutName: String,
         callbacks: NativeAdCallbacks
     ) {
-        wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
-        val view = wrappedBehavior.rootView
-        view?.let {
-            startCloseLogic(it, callbacks)
+        activity.runOnUiThread {
+            wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
+            val view = wrappedBehavior.rootView
+            view?.let {
+                startCloseLogic(it, callbacks)
+            }
         }
     }
 
@@ -83,6 +86,7 @@ class CountdownDecorator (
         // Setup close button click listener (will only work when enabled)
         closeButton?.setOnClickListener {
             if (closeButton.isClickable) {
+                callbacks.onAdClosed()
                 destroy()
             }
         }

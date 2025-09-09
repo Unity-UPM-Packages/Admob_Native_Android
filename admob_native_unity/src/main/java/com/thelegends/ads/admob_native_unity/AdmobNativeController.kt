@@ -81,6 +81,7 @@ class AdmobNativeController(
     }
 
     fun showAd(layoutName: String) {
+        Log.d(TAG, "Show ads")
         val adToShow = loadedNativeAd ?: run {
             Log.e(TAG, "Ad not available. Call loadAd() first.")
 //            resetAllConfigs()
@@ -189,6 +190,7 @@ class AdmobNativeController(
             this.countdownConfig = null
         } else {
             this.countdownConfig = CountdownConfig(initial, duration, closeDelay)
+            Log.d(TAG, "Applying Countdown config: $initial, $duration, $closeDelay")
         }
         return this
     }

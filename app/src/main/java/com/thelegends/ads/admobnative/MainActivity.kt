@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
     // Sử dụng Ad Unit ID test của Google cho quảng cáo Native
     private val TEST_AD_UNIT_ID = "ca-app-pub-3940256099942544/2247696110"
     // Tên file layout bạn đã tạo trong module library
-    private val NATIVE_LAYOUT_NAME = "native_banner"
+    private val NATIVE_LAYOUT_NAME = "native_template"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,7 +64,9 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
         showAdButton.setOnClickListener {
             if (admobNativeController.isAdAvailable()) {
                 Log.d(TAG, "Show Ad button clicked. Showing the ad...")
-              admobNativeController.showAd(NATIVE_LAYOUT_NAME)
+              admobNativeController
+                  .withCountdown(5f,5f,2f)
+                  .showAd(NATIVE_LAYOUT_NAME)
             } else {
                 Toast.makeText(this, "Ad not available yet. Please load first.", Toast.LENGTH_SHORT).show()
                 Log.d(TAG, "Show Ad button clicked, but ad is not available.")
