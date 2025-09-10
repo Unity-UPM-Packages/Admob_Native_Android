@@ -6,20 +6,26 @@
 
     <Button
         android:id="@+id/init_sdk_button"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="1. Initialize AdMob SDK" />
 
     <Button
         android:id="@+id/load_ad_button"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="2. Load Native Ad" />
 
     <Button
         android:id="@+id/show_ad_button"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="3. Show Native Ad" />
+    <Button
+        android:id="@+id/show_ad_banner"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="3. Show Native Ad" />

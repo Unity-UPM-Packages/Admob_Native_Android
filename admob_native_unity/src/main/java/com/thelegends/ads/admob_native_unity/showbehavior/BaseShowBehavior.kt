@@ -15,7 +15,7 @@ import com.thelegends.ads.admob_native_unity.R
 open class BaseShowBehavior : IShowBehavior {
 
     private val TAG = this.javaClass.simpleName
-    internal var rootView: View? = null
+    internal var rootView: FrameLayout? = null
         private set
 
     private var activityRef: java.lang.ref.WeakReference<Activity>? = null
@@ -30,6 +30,16 @@ open class BaseShowBehavior : IShowBehavior {
         this.activityRef = java.lang.ref.WeakReference(activity)
 
         activity.runOnUiThread {
+            destroy()
+
+            val adContainer = FrameLayout(activity)
+            this.rootView = adContainer
+
+            activity.addContentView(adContainer, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            ))
+
             val layoutId = activity.resources.getIdentifier(
                 layoutName,
                 "layout",
@@ -38,32 +48,31 @@ open class BaseShowBehavior : IShowBehavior {
 
             if (layoutId == 0) {
                 Log.e(TAG, "Layout resource not found for name: $layoutName. Ad will not be shown.")
+                (this.rootView?.parent as? ViewGroup)?.removeView(this.rootView)
+                this.rootView = null
                 return@runOnUiThread
             }
 
+            val adContentView = activity.layoutInflater.inflate(layoutId, adContainer, false)
 
-            val inflatedView = activity.layoutInflater.inflate(layoutId, null);
-            rootView = inflatedView
-
-            val nativeAdView = inflatedView?.findViewById<NativeAdView>(R.id.native_ad_view) ?: return@runOnUiThread
-
-
-            var layout: FrameLayout? = activity.findViewById(R.id.native_ad_view)
-            if (layout == null) {
-                layout = FrameLayout(activity)
-                activity.addContentView(layout, FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT
-                ))
-            } else {
-                layout.removeAllViews()
+            val nativeAdView = adContentView.findViewById<NativeAdView>(R.id.native_ad_view)
+            if (nativeAdView == null) {
+                Log.e(TAG, "NativeAdView with ID 'native_ad_view' not found in layout '$layoutName'.")
+                (this.rootView?.parent as? ViewGroup)?.removeView(this.rootView)
+                this.rootView = null
+                return@runOnUiThread
             }
 
             populateNativeAdView(nativeAd, nativeAdView)
-            layout.addView(inflatedView)
+            adContainer.addView(adContentView)
+            adContainer.bringToFront()
 
-            nativeAdView.elevation = 10f
-            nativeAdView.bringToFront()
+
+//            val inflatedView = activity.layoutInflater.inflate(layoutId, null);
+
+//            val nativeAdView = inflatedView?.findViewById<NativeAdView>(R.id.native_ad_view) ?: return@runOnUiThread
+//            populateNativeAdView(nativeAd, nativeAdView)
+//            adContainer.addView(inflatedView)
         }
     }
 
