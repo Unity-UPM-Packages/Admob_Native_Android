@@ -30,7 +30,6 @@ open class BaseShowBehavior : IShowBehavior {
         this.activityRef = java.lang.ref.WeakReference(activity)
 
         activity.runOnUiThread {
-            destroy()
 
             val adContainer = FrameLayout(activity)
             this.rootView = adContainer
@@ -66,13 +65,6 @@ open class BaseShowBehavior : IShowBehavior {
             populateNativeAdView(nativeAd, nativeAdView)
             adContainer.addView(adContentView)
             adContainer.bringToFront()
-
-
-//            val inflatedView = activity.layoutInflater.inflate(layoutId, null);
-
-//            val nativeAdView = inflatedView?.findViewById<NativeAdView>(R.id.native_ad_view) ?: return@runOnUiThread
-//            populateNativeAdView(nativeAd, nativeAdView)
-//            adContainer.addView(inflatedView)
         }
     }
 

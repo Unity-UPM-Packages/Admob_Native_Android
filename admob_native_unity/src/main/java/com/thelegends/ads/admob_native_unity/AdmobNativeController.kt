@@ -19,7 +19,7 @@ class AdmobNativeController(
     private val TAG = "AdmobNativeController"
 
     fun loadAd(adUnitId: String, adRequest: AdRequest) {
-        destroyAd()
+//        destroyAd()
 
         Log.d(TAG, "Loading native ad for Ad Unit ID: $adUnitId")
 
