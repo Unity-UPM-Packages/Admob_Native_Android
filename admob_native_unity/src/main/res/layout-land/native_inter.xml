@@ -3,7 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/gnt_white">
 
     <com.google.android.gms.ads.nativead.NativeAdView
         android:id="@+id/native_ad_view"
@@ -125,42 +126,42 @@
                 android:id="@+id/ad_close_button"
                 android:layout_width="30dp"
                 android:layout_height="30dp"
-                android:layout_marginStart="15dp"
-                android:layout_marginTop="15dp"
-                android:background="#80000000"
-                android:contentDescription="Close Ad"
                 android:padding="5dp"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
-                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:tint="@android:color/white" />
+                app:layout_constraintStart_toStartOf="parent"
+                android:contentDescription="Close Ad"
+                android:layout_marginTop="15dp"
+                android:layout_marginStart="15dp" />
+
 
             <!-- 5. Bộ đếm ngược ở góc trên bên phải (Theo chuẩn) -->
             <ProgressBar
                 android:id="@+id/ad_progress_bar"
                 style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginEnd="17dp"
-                android:indeterminate="false"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:progress="100"
                 android:progressDrawable="@drawable/circular_progress_bar"
+                android:indeterminate="false"
+                app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="17dp" />
 
             <TextView
                 android:id="@+id/ad_countdown_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
-                android:textSize="20sp"
+                android:textColor="@color/icon_grey"
+                android:textSize="14sp"
                 android:textStyle="bold"
-                app:layout_constraintBottom_toBottomOf="@id/ad_progress_bar"
-                app:layout_constraintEnd_toEndOf="@id/ad_progress_bar"
-                app:layout_constraintStart_toStartOf="@id/ad_progress_bar"
+                android:gravity="center"
+                tools:text="5"
                 app:layout_constraintTop_toTopOf="@id/ad_progress_bar"
-                tools:text="5" />
+                app:layout_constraintBottom_toBottomOf="@id/ad_progress_bar"
+                app:layout_constraintStart_toStartOf="@id/ad_progress_bar"
+                app:layout_constraintEnd_toEndOf="@id/ad_progress_bar" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.gms.ads.nativead.NativeAdView>
