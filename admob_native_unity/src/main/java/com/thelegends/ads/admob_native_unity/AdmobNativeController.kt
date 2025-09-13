@@ -4,16 +4,13 @@ package com.thelegends.admob_native_unity
 import android.app.Activity
 import android.util.Log
 import android.view.View
-import android.widget.FrameLayout
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.thelegends.ads.admob_native_unity.decorator.*
 import com.thelegends.ads.admob_native_unity.showbehavior.*
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
-import kotlin.coroutines.resume
 
 class AdmobNativeController(
     private val activity: Activity,

@@ -1,7 +1,6 @@
 package com.thelegends.ads.admob_native_unity.decorator
 
 import android.app.Activity
-import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.ProgressBar
