@@ -16,7 +16,7 @@ open class BaseShowBehavior : IShowBehavior {
 
     private val TAG = this.javaClass.simpleName
     internal var rootView: FrameLayout? = null
-        private set
+        internal set
 
     private var activityRef: java.lang.ref.WeakReference<Activity>? = null
 
@@ -76,6 +76,10 @@ open class BaseShowBehavior : IShowBehavior {
             Log.d(TAG, "Base Ad view has been destroyed.")
         }
 
+    }
+
+    fun getRootView(): View? {
+        return this.rootView
     }
 
     private fun findViewId(context: Context, name: String): Int {

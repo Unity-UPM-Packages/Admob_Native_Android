@@ -3,10 +3,17 @@ package com.thelegends.admob_native_unity
 
 import android.app.Activity
 import android.util.Log
+import android.view.View
+import android.widget.FrameLayout
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.thelegends.ads.admob_native_unity.decorator.*
 import com.thelegends.ads.admob_native_unity.showbehavior.*
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.FutureTask
+import kotlin.coroutines.resume
 
 class AdmobNativeController(
     private val activity: Activity,
@@ -19,7 +26,6 @@ class AdmobNativeController(
     private val TAG = "AdmobNativeController"
 
     fun loadAd(adUnitId: String, adRequest: AdRequest) {
-//        destroyAd()
 
         Log.d(TAG, "Loading native ad for Ad Unit ID: $adUnitId")
 
@@ -84,7 +90,6 @@ class AdmobNativeController(
         Log.d(TAG, "Show ads")
         val adToShow = loadedNativeAd ?: run {
             Log.e(TAG, "Ad not available. Call loadAd() first.")
-//            resetAllConfigs()
             return
         }
 
@@ -92,6 +97,15 @@ class AdmobNativeController(
 
         // Lắp ráp
         var behavior: BaseShowBehavior = BaseShowBehavior()
+
+        if (positionConfig != null) {
+            behavior = PositionDecorator(
+                behavior,
+                positionConfig!!.x,
+                positionConfig!!.y
+            )
+        }
+
         if (countdownConfig != null) {
             behavior = CountdownDecorator(
                 behavior,
@@ -101,10 +115,8 @@ class AdmobNativeController(
             )
         }
 
-        // Thực thi
         behavior.show(activity, adToShow, layoutName, callbacks)
         currentShowBehavior = behavior
-//        resetAllConfigs()
 
         callbacks.onAdShow()
         internalCallbackListeners.toList().forEach { it.onAdShow() }
@@ -197,8 +209,22 @@ class AdmobNativeController(
 
     //endregion
 
+    //region PositionDecorator
+    private data class PositionConfig(val x: Int, val y: Int)
+
+    private var positionConfig: PositionConfig? = null
+
+    fun withPosition(positionX: Int, positionY: Int): AdmobNativeController {
+        this.positionConfig = PositionConfig(positionX, positionY)
+        return this
+    }
+
+    //endregion
+
+
     private fun resetAllConfigs() {
         countdownConfig = null
+        positionConfig = null
     }
 
     private val internalCallbackListeners = mutableListOf<NativeAdCallbacks>()
@@ -210,6 +236,56 @@ class AdmobNativeController(
     fun removeAdCallbackListener(listener: NativeAdCallbacks) {
         internalCallbackListeners.remove(listener)
     }
+
+    fun getWidthInPixels(): Float {
+        val task = FutureTask(Callable<Int> {
+            val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
+            val adContent = adContainer?.findViewById<View>(
+                activity.resources.getIdentifier("ad_content", "id", activity.packageName)
+            )
+            adContent?.width ?: 0
+        })
+
+        activity.runOnUiThread(task)
+
+        try {
+            return task.get().toFloat()
+        } catch (e: InterruptedException) {
+            Log.e(TAG, "Failed to get ad view width (Interrupted): ${e.localizedMessage}")
+            Thread.currentThread().interrupt() // Khôi phục trạng thái interrupt
+        } catch (e: ExecutionException) {
+            Log.e(TAG, "Failed to get ad view width (Execution): ${e.localizedMessage}")
+        }
+
+        return -1.0f
+    }
+
+    fun getHeightInPixels(): Float {
+        val task = FutureTask(Callable<Int> {
+            val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
+            val adContent = adContainer?.findViewById<View>(
+                activity.resources.getIdentifier("ad_content", "id", activity.packageName)
+            )
+
+            adContent?.height ?: 0
+        })
+
+        activity.runOnUiThread(task)
+
+        try {
+            return task.get().toFloat()
+        } catch (e: InterruptedException) {
+            Log.e(TAG, "Failed to get ad view height (Interrupted): ${e.localizedMessage}")
+            Thread.currentThread().interrupt()
+        } catch (e: ExecutionException) {
+            Log.e(TAG, "Failed to get ad view height (Execution): ${e.localizedMessage}")
+        }
+
+        return -1.0f
+    }
+
+
+
 
 
 }

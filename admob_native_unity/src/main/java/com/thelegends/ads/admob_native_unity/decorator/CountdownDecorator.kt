@@ -12,7 +12,7 @@ import com.thelegends.admob_native_unity.NativeAdCallbacks
 import com.thelegends.ads.admob_native_unity.R
 import com.thelegends.ads.admob_native_unity.showbehavior.*
 
-class CountdownDecorator (
+class CountdownDecorator(
     private val wrappedBehavior: BaseShowBehavior,
     private val initialDelaySeconds: Float,
     private val countdownDurationSeconds: Float,
@@ -33,13 +33,12 @@ class CountdownDecorator (
         layoutName: String,
         callbacks: NativeAdCallbacks
     ) {
-        activity.runOnUiThread {
-            wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
-            val view = wrappedBehavior.rootView
-            view?.let {
-                startCloseLogic(it, callbacks)
-            }
+        wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
+        val view = wrappedBehavior.rootView
+        view?.let {
+            startCloseLogic(it, callbacks)
         }
+
     }
 
     override fun destroy() {
@@ -92,7 +91,11 @@ class CountdownDecorator (
         }
     }
 
-    private fun startMainCountdown(closeButton: ImageView?, progressBar: ProgressBar?, countdownText: TextView?) {
+    private fun startMainCountdown(
+        closeButton: ImageView?,
+        progressBar: ProgressBar?,
+        countdownText: TextView?
+    ) {
         progressBar?.progress = 100  // Start from 100% and decrease
 
         progressBar?.visibility = View.VISIBLE
@@ -112,7 +115,8 @@ class CountdownDecorator (
                 countdownText?.text = secondsRemaining.toString()
 
                 // Progress decreases from 100% to 0% to show remaining time
-                val progressPercent = (timeRemaining * 100 / countdownTimerDurationMillis).toInt().coerceAtLeast(0)
+                val progressPercent =
+                    (timeRemaining * 100 / countdownTimerDurationMillis).toInt().coerceAtLeast(0)
                 progressBar?.progress = progressPercent
             }
 
@@ -123,7 +127,11 @@ class CountdownDecorator (
         countdownTimer?.startCountDownTimer()
     }
 
-    private fun startCloseButtonDelay(closeButton: ImageView?, progressBar: ProgressBar?, countdownText: TextView?) {
+    private fun startCloseButtonDelay(
+        closeButton: ImageView?,
+        progressBar: ProgressBar?,
+        countdownText: TextView?
+    ) {
         progressBar?.visibility = View.GONE
         countdownText?.visibility = View.GONE
         closeButton?.visibility = View.VISIBLE

@@ -72,8 +72,8 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
             if (admobNativeController1.isAdAvailable()) {
                 Log.d(TAG, "Show Ad button clicked. Showing the ad...")
                 admobNativeController1
-                  .withCountdown(5f,5f,2f)
-                  .showAd(NATIVE_LAYOUT_NAME)
+                    .withCountdown(5f,5f,2f)
+                    .showAd(NATIVE_LAYOUT_NAME)
             } else {
                 Toast.makeText(this, "Ad not available yet. Please load first.", Toast.LENGTH_SHORT).show()
                 Log.d(TAG, "Show Ad button clicked, but ad is not available.")
@@ -84,7 +84,8 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
             if (admobNativeController2.isAdAvailable()) {
                 Log.d(TAG, "Show Ad button clicked. Showing the ad...")
                 admobNativeController2
-                  .showAd("native_banner")
+                    .withPosition(20,20)
+                    .showAd("native_mrec")
             } else {
                 Toast.makeText(this, "Ad not available yet. Please load first.", Toast.LENGTH_SHORT).show()
                 Log.d(TAG, "Show Ad button clicked, but ad is not available.")
