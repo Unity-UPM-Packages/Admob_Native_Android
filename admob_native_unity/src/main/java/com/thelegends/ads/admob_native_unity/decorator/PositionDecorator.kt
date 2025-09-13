@@ -2,6 +2,7 @@ package com.thelegends.ads.admob_native_unity.decorator
 import com.thelegends.admob_native_unity.*
 
 import android.app.Activity
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
@@ -11,6 +12,7 @@ import com.thelegends.ads.admob_native_unity.showbehavior.BaseShowBehavior
 
 class PositionDecorator(
     private val wrappedBehavior: BaseShowBehavior,
+    private val controller: AdmobNativeController,
     private val positionX: Int,
     private val positionY: Int
 ) : BaseShowBehavior() {
@@ -23,6 +25,7 @@ class PositionDecorator(
         callbacks: NativeAdCallbacks
     ) {
         wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
+
         this.rootView = wrappedBehavior.rootView
 
         val adContent = rootView?.findViewById<View>(
@@ -42,6 +45,8 @@ class PositionDecorator(
 
 
             adContent.visibility = View.VISIBLE
+
+
         }
 
     }

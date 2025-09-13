@@ -90,6 +90,7 @@ class AdmobNativeController(
             return
         }
 
+
         currentShowBehavior?.destroy()
 
         // Lắp ráp
@@ -98,9 +99,12 @@ class AdmobNativeController(
         if (positionConfig != null) {
             behavior = PositionDecorator(
                 behavior,
+                this,
                 positionConfig!!.x,
                 positionConfig!!.y
             )
+
+            val a = getHeightInPixels()
         }
 
         if (countdownConfig != null) {
@@ -111,6 +115,7 @@ class AdmobNativeController(
                 countdownConfig!!.closeDelay
             )
         }
+
 
         behavior.show(activity, adToShow, layoutName, callbacks)
         currentShowBehavior = behavior
@@ -263,7 +268,6 @@ class AdmobNativeController(
             val adContent = adContainer?.findViewById<View>(
                 activity.resources.getIdentifier("ad_content", "id", activity.packageName)
             )
-
             adContent?.height ?: 0
         })
 
