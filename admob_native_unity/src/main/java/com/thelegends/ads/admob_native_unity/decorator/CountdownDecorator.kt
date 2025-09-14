@@ -32,12 +32,13 @@ class CountdownDecorator(
         layoutName: String,
         callbacks: NativeAdCallbacks
     ) {
-        wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
-        val view = wrappedBehavior.rootView
-        view?.let {
-            startCloseLogic(it, callbacks)
+        activity.runOnUiThread {
+            wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
+            val view = wrappedBehavior.rootView
+            view?.let {
+                startCloseLogic(it, callbacks)
+            }
         }
-
     }
 
     override fun destroy() {

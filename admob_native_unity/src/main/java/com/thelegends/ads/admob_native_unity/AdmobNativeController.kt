@@ -9,8 +9,11 @@ import com.google.android.gms.ads.nativead.NativeAd
 import com.thelegends.ads.admob_native_unity.decorator.*
 import com.thelegends.ads.admob_native_unity.showbehavior.*
 import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 class AdmobNativeController(
     private val activity: Activity,
@@ -84,6 +87,7 @@ class AdmobNativeController(
     }
 
     fun showAd(layoutName: String) {
+        Log.d("AAAAA", "AAAAA Show")
         Log.d(TAG, "Show ads")
         val adToShow = loadedNativeAd ?: run {
             Log.e(TAG, "Ad not available. Call loadAd() first.")
@@ -104,7 +108,6 @@ class AdmobNativeController(
                 positionConfig!!.y
             )
 
-            val a = getHeightInPixels()
         }
 
         if (countdownConfig != null) {
@@ -276,10 +279,10 @@ class AdmobNativeController(
         try {
             return task.get().toFloat()
         } catch (e: InterruptedException) {
-            Log.e(TAG, "Failed to get ad view height (Interrupted): ${e.localizedMessage}")
-            Thread.currentThread().interrupt()
+            Log.e(TAG, "Failed to get ad view width (Interrupted): ${e.localizedMessage}")
+            Thread.currentThread().interrupt() // Khôi phục trạng thái interrupt
         } catch (e: ExecutionException) {
-            Log.e(TAG, "Failed to get ad view height (Execution): ${e.localizedMessage}")
+            Log.e(TAG, "Failed to get ad view width (Execution): ${e.localizedMessage}")
         }
 
         return -1.0f

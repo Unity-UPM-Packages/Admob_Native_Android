@@ -1,7 +1,11 @@
 package com.thelegends.ads.admob_native_unity.decorator
+
 import com.thelegends.admob_native_unity.*
 
 import android.app.Activity
+import android.os.Handler
+import android.os.Looper
+import android.view.ViewTreeObserver
 import android.util.Log
 import android.view.Gravity
 import android.view.View
@@ -24,28 +28,33 @@ class PositionDecorator(
         layoutName: String,
         callbacks: NativeAdCallbacks
     ) {
-        wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
+        activity.runOnUiThread {
+            wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
 
-        this.rootView = wrappedBehavior.rootView
+            Log.d("AAAAA", "AAAAA Position")
 
-        val adContent = rootView?.findViewById<View>(
-            activity.resources.getIdentifier("ad_content", "id", activity.packageName)
-        )
+            this.rootView = wrappedBehavior.rootView
 
-        adContent?.visibility = View.INVISIBLE
+            val adContent = rootView?.findViewById<View>(
+                activity.resources.getIdentifier("ad_content", "id", activity.packageName)
+            )
 
-        adContent?.post {
-            val params = adContent.layoutParams as? FrameLayout.LayoutParams
-            params?.let {
-                it.gravity = Gravity.TOP or Gravity.START
-                it.leftMargin = positionX // Giả sử vẫn dùng positionX, Y
-                it.topMargin = positionY
-                adContent.layoutParams = it
+            adContent?.visibility = View.INVISIBLE
+
+            adContent?.post {
+                val params = adContent.layoutParams as? FrameLayout.LayoutParams
+                params?.let {
+                    it.gravity = Gravity.TOP or Gravity.START
+                    it.leftMargin = positionX // Giả sử vẫn dùng positionX, Y
+                    it.topMargin = positionY
+                    adContent.layoutParams = it
+                }
+
+                Log.d("AAAAA", "AAAAA ${adContent.width} ${adContent.height}")
+                Log.d("AAAAA", "AAAAA ${controller.getWidthInPixels()} ${controller.getHeightInPixels()}")
+
+                adContent.visibility = View.VISIBLE
             }
-
-
-            adContent.visibility = View.VISIBLE
-
 
         }
 
