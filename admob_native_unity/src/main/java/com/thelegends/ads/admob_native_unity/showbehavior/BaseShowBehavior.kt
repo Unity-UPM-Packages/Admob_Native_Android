@@ -27,7 +27,6 @@ open class BaseShowBehavior : IShowBehavior {
         layoutName: String,
         callbacks: NativeAdCallbacks
     ) {
-        Log.d("AAAAA", "AAAAA BaseShow")
         this.activityRef = java.lang.ref.WeakReference(activity)
 
         activity.runOnUiThread {

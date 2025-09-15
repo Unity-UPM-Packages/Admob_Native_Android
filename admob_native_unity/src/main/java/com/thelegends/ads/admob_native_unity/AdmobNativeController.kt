@@ -9,12 +9,8 @@ import com.google.android.gms.ads.nativead.NativeAd
 import com.thelegends.ads.admob_native_unity.decorator.*
 import com.thelegends.ads.admob_native_unity.showbehavior.*
 import java.util.concurrent.Callable
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
-
 class AdmobNativeController(
     private val activity: Activity,
     private val callbacks: NativeAdCallbacks
@@ -87,7 +83,6 @@ class AdmobNativeController(
     }
 
     fun showAd(layoutName: String) {
-        Log.d("AAAAA", "AAAAA Show")
         Log.d(TAG, "Show ads")
         val adToShow = loadedNativeAd ?: run {
             Log.e(TAG, "Ad not available. Call loadAd() first.")

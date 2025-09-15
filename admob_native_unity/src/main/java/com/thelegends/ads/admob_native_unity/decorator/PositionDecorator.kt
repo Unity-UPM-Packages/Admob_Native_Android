@@ -1,12 +1,7 @@
 package com.thelegends.ads.admob_native_unity.decorator
 
 import com.thelegends.admob_native_unity.*
-
 import android.app.Activity
-import android.os.Handler
-import android.os.Looper
-import android.view.ViewTreeObserver
-import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
@@ -31,8 +26,6 @@ class PositionDecorator(
         activity.runOnUiThread {
             wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
 
-            Log.d("AAAAA", "AAAAA Position")
-
             this.rootView = wrappedBehavior.rootView
 
             val adContent = rootView?.findViewById<View>(
@@ -45,13 +38,10 @@ class PositionDecorator(
                 val params = adContent.layoutParams as? FrameLayout.LayoutParams
                 params?.let {
                     it.gravity = Gravity.TOP or Gravity.START
-                    it.leftMargin = positionX // Giả sử vẫn dùng positionX, Y
+                    it.leftMargin = positionX
                     it.topMargin = positionY
                     adContent.layoutParams = it
                 }
-
-                Log.d("AAAAA", "AAAAA ${adContent.width} ${adContent.height}")
-                Log.d("AAAAA", "AAAAA ${controller.getWidthInPixels()} ${controller.getHeightInPixels()}")
 
                 adContent.visibility = View.VISIBLE
             }
