@@ -16,28 +16,28 @@ import com.thelegends.ads.admobnative.R
 
 class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement interface
 
-    private lateinit var admobNativeController1: AdmobNativeController
-    private lateinit var admobNativeController2: AdmobNativeController
+    private lateinit var admobNativeController: AdmobNativeController
+//    private lateinit var admobNativeController2: AdmobNativeController
     private val TAG = "MainActivityTest"
 
     // Sử dụng Ad Unit ID test của Google cho quảng cáo Native
     private val TEST_AD_UNIT_ID = "ca-app-pub-3940256099942544/2247696110"
     // Tên file layout bạn đã tạo trong module library
-    private val NATIVE_LAYOUT_NAME = "native_template"
+    private val NATIVE_LAYOUT_NAME = "native_video"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main) // Cần có layout cho app module
 
         // Tạo instance của controller, truyền vào Activity và chính nó làm listener
-        admobNativeController1 = AdmobNativeController(this, this)
-        admobNativeController2 = AdmobNativeController(this, this)
+        admobNativeController = AdmobNativeController(this, this)
+//        admobNativeController2 = AdmobNativeController(this, this)
 
         // Thiết lập các nút bấm để test
         val initSdkButton: Button = findViewById(R.id.init_sdk_button)
         val loadAdButton: Button = findViewById(R.id.load_ad_button)
         val showAdButton: Button = findViewById(R.id.show_ad_button)
-        val showbbannerButton: Button = findViewById(R.id.show_ad_banner)
+//        val showbbannerButton: Button = findViewById(R.id.show_ad_banner)
 
         initSdkButton.setOnClickListener {
             Log.d(TAG, "Initialize SDK button clicked.")
@@ -61,17 +61,17 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
         loadAdButton.setOnClickListener {
             Log.d(TAG, "Load Ad button clicked. Requesting a new ad...")
             val adRequest = AdRequest.Builder().build()
-            val adRequest2 = AdRequest.Builder().build();
-            admobNativeController1.loadAd(TEST_AD_UNIT_ID, adRequest)
-            admobNativeController2.loadAd(TEST_AD_UNIT_ID, adRequest2)
+//            val adRequest2 = AdRequest.Builder().build();
+            admobNativeController.loadAd(TEST_AD_UNIT_ID, adRequest)
+//            admobNativeController2.loadAd(TEST_AD_UNIT_ID, adRequest2)
         }
 
 
 
         showAdButton.setOnClickListener {
-            if (admobNativeController1.isAdAvailable()) {
+            if (admobNativeController.isAdAvailable()) {
                 Log.d(TAG, "Show Ad button clicked. Showing the ad...")
-                admobNativeController1
+                admobNativeController
                     .withCountdown(5f,5f,2f)
                     .showAd(NATIVE_LAYOUT_NAME)
             } else {
@@ -80,17 +80,17 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
             }
         }
 
-        showbbannerButton.setOnClickListener {
-            if (admobNativeController2.isAdAvailable()) {
-                Log.d(TAG, "Show Ad button clicked. Showing the ad...")
-                admobNativeController2
-                    .withPosition(20,20)
-                    .showAd("native_mrec")
-            } else {
-                Toast.makeText(this, "Ad not available yet. Please load first.", Toast.LENGTH_SHORT).show()
-                Log.d(TAG, "Show Ad button clicked, but ad is not available.")
-            }
-        }
+//        showbbannerButton.setOnClickListener {
+//            if (admobNativeController2.isAdAvailable()) {
+//                Log.d(TAG, "Show Ad button clicked. Showing the ad...")
+//                admobNativeController2
+//                    .withPosition(20,20)
+//                    .showAd("native_mrec")
+//            } else {
+//                Toast.makeText(this, "Ad not available yet. Please load first.", Toast.LENGTH_SHORT).show()
+//                Log.d(TAG, "Show Ad button clicked, but ad is not available.")
+//            }
+//        }
 
     }
 
