@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:layout_gravity="bottom"
-        android:background="@drawable/ad_card_banner_background">
+        android:background="@drawable/native_banner_background">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/background"
@@ -34,13 +34,14 @@
             <!-- Nút CTA bên phải -->
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/cta"
-                android:layout_width="150dp"
-                android:layout_height="40dp"
+                android:layout_width="140dp"
+                android:layout_height="35dp"
                 android:background="@drawable/ad_cta_button_banner_background"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
-                android:textColor="@color/cta_text_banner_color"
+                android:textColor="#0E2139"
                 android:textStyle="bold"
+                android:textSize="15sp"
                 android:gravity="center"
                 android:maxLines="1"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -90,7 +91,7 @@
                         android:layout_marginStart="4dp"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:textColor="@android:color/black"
+                        android:textColor="#B6BCC3"
                         android:textSize="15sp"
                         android:textStyle="bold"
                         tools:text="Quảng cáo thử nghiệm" />
@@ -104,7 +105,7 @@
                     android:layout_marginTop="2dp"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:textColor="@android:color/darker_gray"
+                    android:textColor="#B6BCC3"
                     android:textSize="11sp"
                     tools:text="Install Flood-It App for free!" />
             </LinearLayout>
