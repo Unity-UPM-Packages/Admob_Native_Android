@@ -22,64 +22,78 @@ class AdmobNativeController(
     private val TAG = "AdmobNativeController"
 
     fun loadAd(adUnitId: String, adRequest: AdRequest) {
+        activity.runOnUiThread {
+            Log.d(TAG, "Loading native ad for Ad Unit ID: $adUnitId on UI thread.")
 
-        Log.d(TAG, "Loading native ad for Ad Unit ID: $adUnitId")
+            val videoOptions = VideoOptions.Builder()
+                .setStartMuted(true)
+                .setCustomControlsRequested(false)
+                .setClickToExpandRequested(false)
+                .build()
 
-        val videoOptions = VideoOptions.Builder()
-            .setStartMuted(true)
-            .setCustomControlsRequested(false)
-            .setClickToExpandRequested(false)
-            .build()
+            val adOptions = com.google.android.gms.ads.nativead.NativeAdOptions.Builder()
+                .setVideoOptions(videoOptions)
+                .build()
 
-        val adOptions = com.google.android.gms.ads.nativead.NativeAdOptions.Builder()
-            .setVideoOptions(videoOptions)
-            .build()
-
-        AdLoader.Builder(activity, adUnitId)
-            .forNativeAd { ad ->
-                // THÀNH CÔNG!
-                Log.d(TAG, "Ad loaded successfully.")
-                this.loadedNativeAd = ad
-                setupAdCallbacks(ad)
-                callbacks.onAdLoaded()
-
-                internalCallbackListeners.toList().forEach { it.onAdLoaded() }
-            }
-            .withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(adError: LoadAdError) {
-                    Log.d(TAG, "Ad load failed.")
-                    callbacks.onAdFailedToLoad(adError)
-                    internalCallbackListeners.toList().forEach { it.onAdFailedToLoad(adError) }
+            val adLoader = AdLoader.Builder(activity, adUnitId)
+                .forNativeAd { ad ->
+                    activity.runOnUiThread {
+                        Log.d(TAG, "Ad loaded successfully.")
+                        this.loadedNativeAd = ad
+                        setupAdCallbacks(ad)
+                        callbacks.onAdLoaded()
+                        internalCallbackListeners.toList().forEach { it.onAdLoaded() }
+                    }
                 }
+                .withAdListener(object : AdListener() {
+                    override fun onAdFailedToLoad(adError: LoadAdError) {
+                        activity.runOnUiThread {
+                            Log.d(TAG, "Ad load failed: ${adError.message}")
+                            callbacks.onAdFailedToLoad(adError)
+                            internalCallbackListeners.toList().forEach { it.onAdFailedToLoad(adError) }
+                        }
+                    }
 
-                override fun onAdClicked() {
-                    callbacks.onAdClicked()
-                    internalCallbackListeners.toList().forEach { it.onAdClicked() }
-                    Log.d(TAG, "Ad clicked.")
-                }
+                    override fun onAdClicked() {
+                        activity.runOnUiThread {
+                            callbacks.onAdClicked()
+                            internalCallbackListeners.toList().forEach { it.onAdClicked() }
+                            Log.d(TAG, "Ad clicked.")
+                        }
+                    }
 
-                override fun onAdImpression() {
-                    callbacks.onAdDidRecordImpression()
-                    internalCallbackListeners.toList().forEach { it.onAdDidRecordImpression() }
-                    Log.d(TAG, "Ad impression recorded.")
-                }
+                    override fun onAdImpression() {
+                        activity.runOnUiThread {
+                            callbacks.onAdDidRecordImpression()
+                            internalCallbackListeners.toList().forEach { it.onAdDidRecordImpression() }
+                            Log.d(TAG, "Ad impression recorded.")
+                        }
+                    }
 
-                override fun onAdOpened() {
-                    callbacks.onAdShowedFullScreenContent()
-                    internalCallbackListeners.toList().forEach { it.onAdShowedFullScreenContent() }
-                    Log.d(TAG, "Ad opened Full Screen Content.")
-                }
+                    override fun onAdOpened() {
+                        activity.runOnUiThread {
+                            callbacks.onAdShowedFullScreenContent()
+                            internalCallbackListeners.toList().forEach { it.onAdShowedFullScreenContent() }
+                            Log.d(TAG, "Ad opened Full Screen Content.")
+                        }
+                    }
 
-                override fun onAdClosed() {
-                    callbacks.onAdDismissedFullScreenContent()
-                    internalCallbackListeners.toList().forEach { it.onAdDismissedFullScreenContent() }
-                    Log.d(TAG, "Ad closed Full Screen Content.")
-                }
-            })
-            .withNativeAdOptions(adOptions)
-            .build()
-            .loadAd(adRequest)
+                    override fun onAdClosed() {
+                        activity.runOnUiThread {
+                            callbacks.onAdDismissedFullScreenContent()
+                            internalCallbackListeners.toList().forEach { it.onAdDismissedFullScreenContent() }
+                            Log.d(TAG, "Ad closed Full Screen Content.")
+                        }
+                    }
+                })
+                .withNativeAdOptions(adOptions)
+                .build()
 
+            // Execute the ad loading on a background thread
+            Thread {
+                adLoader.loadAd(adRequest)
+            }.start()
+        }
     }
 
     fun showAd(layoutName: String) {
@@ -149,44 +163,56 @@ class AdmobNativeController(
         val videoLifecycleCallbacks =
             object : VideoController.VideoLifecycleCallbacks() {
                 override fun onVideoStart() {
-                    Log.d(TAG, "Video started.")
-                    internalCallbackListeners.toList().forEach { it.onVideoStart() }
-                    callbacks.onVideoStart()
+                    activity.runOnUiThread {
+                        Log.d(TAG, "Video started.")
+                        internalCallbackListeners.toList().forEach { it.onVideoStart() }
+                        callbacks.onVideoStart()
+                    }
                 }
 
                 override fun onVideoPlay() {
-                    Log.d(TAG, "Video played.")
-                    internalCallbackListeners.toList().forEach { it.onVideoPlay() }
-                    callbacks.onVideoPlay()
+                    activity.runOnUiThread {
+                        Log.d(TAG, "Video played.")
+                        internalCallbackListeners.toList().forEach { it.onVideoPlay() }
+                        callbacks.onVideoPlay()
+                    }
                 }
 
                 override fun onVideoPause() {
-                    Log.d(TAG, "Video paused.")
-                    internalCallbackListeners.toList().forEach { it.onVideoPause() }
-                    callbacks.onVideoPause()
+                    activity.runOnUiThread {
+                        Log.d(TAG, "Video paused.")
+                        internalCallbackListeners.toList().forEach { it.onVideoPause() }
+                        callbacks.onVideoPause()
+                    }
                 }
 
                 override fun onVideoEnd() {
-                    Log.d(TAG, "Video ended.")
-                    internalCallbackListeners.toList().forEach { it.onVideoEnd() }
-                    callbacks.onVideoEnd()
+                    activity.runOnUiThread {
+                        Log.d(TAG, "Video ended.")
+                        internalCallbackListeners.toList().forEach { it.onVideoEnd() }
+                        callbacks.onVideoEnd()
+                    }
                 }
 
                 override fun onVideoMute(isMuted: Boolean) {
-                    Log.d(TAG, "Video isMuted: $isMuted.")
-                    internalCallbackListeners.toList().forEach { it.onVideoMute(isMuted) }
-                    callbacks.onVideoMute(isMuted)
+                    activity.runOnUiThread {
+                        Log.d(TAG, "Video isMuted: $isMuted.")
+                        internalCallbackListeners.toList().forEach { it.onVideoMute(isMuted) }
+                        callbacks.onVideoMute(isMuted)
+                    }
                 }
             }
         ad.mediaContent?.videoController?.videoLifecycleCallbacks = videoLifecycleCallbacks
 
         ad.setOnPaidEventListener { adValue ->
-            Log.d(TAG, "Paid event received: $adValue")
-            callbacks.onPaidEvent(
-                adValue.precisionType,
-                adValue.valueMicros,
-                adValue.currencyCode
-            )
+            activity.runOnUiThread {
+                Log.d(TAG, "Paid event received: $adValue")
+                callbacks.onPaidEvent(
+                    adValue.precisionType,
+                    adValue.valueMicros,
+                    adValue.currencyCode
+                )
+            }
         }
     }
 
