@@ -66,8 +66,8 @@
 
                         <ImageView
                             android:id="@+id/icon"
-                            android:layout_width="0dp"
-                            android:layout_height="match_parent"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
                             android:layout_marginStart="@dimen/gnt_default_margin"
                             android:layout_marginTop="@dimen/gnt_no_margin"
                             android:layout_marginEnd="@dimen/gnt_no_margin"
