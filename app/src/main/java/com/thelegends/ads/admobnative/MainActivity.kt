@@ -23,7 +23,7 @@ class MainActivity : AppCompatActivity(), NativeAdCallbacks { // Implement inter
     // Sử dụng Ad Unit ID test của Google cho quảng cáo Native
     private val TEST_AD_UNIT_ID = "ca-app-pub-3940256099942544/2247696110"
     // Tên file layout bạn đã tạo trong module library
-    private val NATIVE_LAYOUT_NAME = "native_video"
+    private val NATIVE_LAYOUT_NAME = "native_banner"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

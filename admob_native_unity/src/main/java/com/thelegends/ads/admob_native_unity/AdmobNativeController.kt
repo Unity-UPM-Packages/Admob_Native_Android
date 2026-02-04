@@ -35,14 +35,13 @@ class AdmobNativeController(
                 .setVideoOptions(videoOptions)
                 .build()
 
-            val adLoader = AdLoader.Builder(activity, adUnitId)
+            AdLoader.Builder(activity, adUnitId)
                 .forNativeAd { ad ->
                     activity.runOnUiThread {
                         Log.d(TAG, "Ad loaded successfully.")
                         this.loadedNativeAd = ad
                         setupAdCallbacks(ad)
                         callbacks.onAdLoaded()
-                        internalCallbackListeners.toList().forEach { it.onAdLoaded() }
                     }
                 }
                 .withAdListener(object : AdListener() {
@@ -50,14 +49,12 @@ class AdmobNativeController(
                         activity.runOnUiThread {
                             Log.d(TAG, "Ad load failed: ${adError.message}")
                             callbacks.onAdFailedToLoad(adError)
-                            internalCallbackListeners.toList().forEach { it.onAdFailedToLoad(adError) }
                         }
                     }
 
                     override fun onAdClicked() {
                         activity.runOnUiThread {
                             callbacks.onAdClicked()
-                            internalCallbackListeners.toList().forEach { it.onAdClicked() }
                             Log.d(TAG, "Ad clicked.")
                         }
                     }
@@ -65,7 +62,6 @@ class AdmobNativeController(
                     override fun onAdImpression() {
                         activity.runOnUiThread {
                             callbacks.onAdDidRecordImpression()
-                            internalCallbackListeners.toList().forEach { it.onAdDidRecordImpression() }
                             Log.d(TAG, "Ad impression recorded.")
                         }
                     }
@@ -73,7 +69,6 @@ class AdmobNativeController(
                     override fun onAdOpened() {
                         activity.runOnUiThread {
                             callbacks.onAdShowedFullScreenContent()
-                            internalCallbackListeners.toList().forEach { it.onAdShowedFullScreenContent() }
                             Log.d(TAG, "Ad opened Full Screen Content.")
                         }
                     }
@@ -81,18 +76,13 @@ class AdmobNativeController(
                     override fun onAdClosed() {
                         activity.runOnUiThread {
                             callbacks.onAdDismissedFullScreenContent()
-                            internalCallbackListeners.toList().forEach { it.onAdDismissedFullScreenContent() }
                             Log.d(TAG, "Ad closed Full Screen Content.")
                         }
                     }
                 })
                 .withNativeAdOptions(adOptions)
                 .build()
-
-            // Execute the ad loading on a background thread
-            Thread {
-                adLoader.loadAd(adRequest)
-            }.start()
+                .loadAd(adRequest)
         }
     }
 
@@ -133,7 +123,6 @@ class AdmobNativeController(
         currentShowBehavior = behavior
 
         callbacks.onAdShow()
-        internalCallbackListeners.toList().forEach { it.onAdShow() }
     }
 
     fun destroyAd() {
@@ -145,10 +134,7 @@ class AdmobNativeController(
         loadedNativeAd?.destroy()
         loadedNativeAd = null
 
-        internalCallbackListeners.clear()
-
         callbacks.onAdClosed()
-        internalCallbackListeners.toList().forEach { it.onAdClosed() }
 
         Log.d(TAG, "Native ad has been destroyed.")
     }
@@ -165,7 +151,6 @@ class AdmobNativeController(
                 override fun onVideoStart() {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video started.")
-                        internalCallbackListeners.toList().forEach { it.onVideoStart() }
                         callbacks.onVideoStart()
                     }
                 }
@@ -173,7 +158,6 @@ class AdmobNativeController(
                 override fun onVideoPlay() {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video played.")
-                        internalCallbackListeners.toList().forEach { it.onVideoPlay() }
                         callbacks.onVideoPlay()
                     }
                 }
@@ -181,7 +165,6 @@ class AdmobNativeController(
                 override fun onVideoPause() {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video paused.")
-                        internalCallbackListeners.toList().forEach { it.onVideoPause() }
                         callbacks.onVideoPause()
                     }
                 }
@@ -189,7 +172,6 @@ class AdmobNativeController(
                 override fun onVideoEnd() {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video ended.")
-                        internalCallbackListeners.toList().forEach { it.onVideoEnd() }
                         callbacks.onVideoEnd()
                     }
                 }
@@ -197,7 +179,6 @@ class AdmobNativeController(
                 override fun onVideoMute(isMuted: Boolean) {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video isMuted: $isMuted.")
-                        internalCallbackListeners.toList().forEach { it.onVideoMute(isMuted) }
                         callbacks.onVideoMute(isMuted)
                     }
                 }
@@ -251,16 +232,6 @@ class AdmobNativeController(
     private fun resetAllConfigs() {
         countdownConfig = null
         positionConfig = null
-    }
-
-    private val internalCallbackListeners = mutableListOf<NativeAdCallbacks>()
-
-    fun addAdCallbackListener(listener: NativeAdCallbacks) {
-        if (!internalCallbackListeners.contains(listener)) internalCallbackListeners.add(listener)
-    }
-
-    fun removeAdCallbackListener(listener: NativeAdCallbacks) {
-        internalCallbackListeners.remove(listener)
     }
 
     fun getWidthInPixels(): Float {
