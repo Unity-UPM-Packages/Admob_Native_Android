@@ -1,5 +1,6 @@
 package com.thelegends.ads.admob_native_unity
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -8,6 +9,7 @@ import android.widget.FrameLayout
  * Giai Đoạn 3: Hệ thống Thùng Chứa (Bucket Layer) Toàn Cục.
  * Quản lý Z-Order của các Native Ads (Banner nằm dưới, Fullscreen nằm trên).
  */
+@SuppressLint("StaticFieldLeak")
 object DynamicAdsLayerManager {
 
     var layerBanner: FrameLayout? = null

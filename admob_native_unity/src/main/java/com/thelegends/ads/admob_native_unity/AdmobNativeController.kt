@@ -102,8 +102,12 @@ class AdmobNativeController(
 
         currentShowBehavior?.destroy()
 
-        // Lắp ráp
-        var behavior: BaseShowBehavior = BaseShowBehavior()
+        // Lắp ráp Lưỡng Cực (Hybrid Assembly)
+        var behavior: BaseShowBehavior = if (layoutJsonConfig != null && zLayerConfig != null) {
+            DynamicShowBehavior(layoutJsonConfig!!, zLayerConfig!!)
+        } else {
+            BaseShowBehavior()
+        }
 
         if (positionConfig != null) {
             behavior = PositionDecorator(
