@@ -230,10 +230,26 @@ class AdmobNativeController(
 
     //endregion
 
+    //region Dynamic Native UI Support
+    var layoutJsonConfig: String? = null
+    var zLayerConfig: String? = null
+
+    fun withLayoutJson(jsonPayload: String): AdmobNativeController {
+        this.layoutJsonConfig = jsonPayload
+        return this
+    }
+
+    fun withZLayer(zLayer: String): AdmobNativeController {
+        this.zLayerConfig = zLayer
+        return this
+    }
+    //endregion
 
     private fun resetAllConfigs() {
         countdownConfig = null
         positionConfig = null
+        layoutJsonConfig = null
+        zLayerConfig = null
     }
 
     fun getWidthInPixels(): Float {
