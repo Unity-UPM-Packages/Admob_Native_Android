@@ -50,27 +50,33 @@ class DynamicShowBehavior(
                 return@runOnUiThread
             }
 
-            // 2. Tạo NativeAdView xịn từ SDK (Vì class này final, không thể kế thừa)
-            val adMobView = com.google.android.gms.ads.nativead.NativeAdView(activity)
-            adMobView.layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            
-            // 3. Tạc tượng View nội dung của chúng ta
+            // 3. Tạc tượng View nội dung & Đúc JSON trước để lấy Root bounds
             val customLayout = DynamicAdBuilderLayout(activity)
+            customLayout.buildFromJson(jsonPayload)
+
+            // Lấy Pixel Rect của RootAdView (Left, Top, Right, Bottom) để sizing NativeAdView
+            val rootRect = customLayout.getRootPixelRect()
+            val adWidth  = if (rootRect.width()  > 0) rootRect.width()  else ViewGroup.LayoutParams.MATCH_PARENT
+            val adHeight = if (rootRect.height() > 0) rootRect.height() else ViewGroup.LayoutParams.MATCH_PARENT
+
+            Log.d(TAG, "Sizing NativeAdView: w=$adWidth h=$adHeight left=${rootRect.left} top=${rootRect.top}")
+
+            // 2. Tạo NativeAdView với kích thước chính xác (không còn MATCH_PARENT → không block touch)
+            val adMobView = com.google.android.gms.ads.nativead.NativeAdView(activity)
+            val adMobParams = FrameLayout.LayoutParams(adWidth, adHeight).apply {
+                leftMargin = rootRect.left
+                topMargin  = rootRect.top
+            }
+            adMobView.layoutParams = adMobParams
+
+            // customLayout phủ kín bên trong NativeAdView (với tọas độ đã được normalize về local)
             customLayout.layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            
-            this.builderLayout = customLayout
-            
-            // Dọn đường cho PositionDecorator (nếu có)
-            this.rootView = adMobView
 
-            // Đúc JSON vào Layout nội bộ
-            customLayout.buildFromJson(jsonPayload)
+            this.builderLayout = customLayout
+            this.rootView = adMobView
 
             // 4. Nhét Custom Layout vào trong AdMob View (Composition)
             adMobView.addView(customLayout)
