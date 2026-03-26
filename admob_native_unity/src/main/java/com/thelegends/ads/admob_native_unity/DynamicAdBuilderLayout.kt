@@ -89,6 +89,15 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
     var referenceWidth: Float = 1080f
     var referenceHeight: Float = 1920f
 
+    // Kích thước màn hình thực tế (lưu lại để scale font đúng sau khi NativeAdView đã được thu nhỏ)
+    private var screenWidth: Float = 1080f
+    private var screenHeight: Float = 1920f
+
+    // Pixel rect của RootAdView trên màn hình thực tế (để DynamicShowBehavior sizing NativeAdView)
+    private var rootPixelRect = android.graphics.Rect(0, 0, 0, 0)
+
+    fun getRootPixelRect(): android.graphics.Rect = rootPixelRect
+
     // Bản đồ định danh (Lưu tên "Native_Headline" -> Bắn ra đúng cái TextView đó)
     // Sẽ dâng cho Giai đoạn 6 xài.
     val registeredViews = HashMap<String, View>()
@@ -155,7 +164,46 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
             referenceHeight = root.optDouble("referenceHeight", 1920.0).toFloat()
 
             val elements = root.optJSONArray("elements") ?: return
-            
+
+            // ─────────── PASS 1: Tìm RootAdView → Tính Pixel Rect trên màn hình thực ───────────
+            val metrics = context.resources.displayMetrics
+            val screenW = metrics.widthPixels.toFloat()
+            val screenH = metrics.heightPixels.toFloat()
+            // Lưu lại để dùng trong onLayout cho việc scale font
+            // Dùng trực tiếp displayMetrics — hoạt động đúng cả landscape lẫn portrait
+            this.screenWidth  = screenW
+            this.screenHeight = screenH
+
+            // Mặc định: Root chiếm toàn màn hình (fallback nếu không có RootAdView trong JSON)
+            var rootXMin = 0f; var rootYMin = 0f
+            var rootXMax = 1f; var rootYMax = 1f
+
+            for (i in 0 until elements.length()) {
+                val el = elements.getJSONObject(i)
+                if (el.optString("elementType") == "RootAdView") {
+                    val rt = el.getJSONObject("rectTransform")
+                    rootXMin = rt.getJSONObject("anchorMin").optDouble("x", 0.0).toFloat()
+                    rootYMin = rt.getJSONObject("anchorMin").optDouble("y", 0.0).toFloat()
+                    rootXMax = rt.getJSONObject("anchorMax").optDouble("x", 1.0).toFloat()
+                    rootYMax = rt.getJSONObject("anchorMax").optDouble("y", 1.0).toFloat()
+                    break
+                }
+            }
+
+            // Đảo trục Y (Unity bottom=0 → Android top=0)
+            val rootPixelLeft   = (screenW * rootXMin).toInt()
+            val rootPixelTop    = (screenH * (1f - rootYMax)).toInt()
+            val rootPixelRight  = (screenW * rootXMax).toInt()
+            val rootPixelBottom = (screenH * (1f - rootYMin)).toInt()
+            rootPixelRect.set(rootPixelLeft, rootPixelTop, rootPixelRight, rootPixelBottom)
+
+            android.util.Log.d("DynamicAdBuilder",
+                "Root pixel rect: L=$rootPixelLeft T=$rootPixelTop R=$rootPixelRight B=$rootPixelBottom")
+
+            val rootW = if (rootXMax - rootXMin > 0f) rootXMax - rootXMin else 1f
+            val rootH = if (rootYMax - rootYMin > 0f) rootYMax - rootYMin else 1f
+
+            // ─────────── PASS 2: Dựng View, normalize tọa độ về Local Root Space ───────────
             for (i in 0 until elements.length()) {
                 val el = elements.getJSONObject(i)
                 val elementType = el.optString("elementType", "Unknown")
@@ -163,34 +211,50 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                 val rt = el.getJSONObject("rectTransform")
                 val anchorMin = rt.getJSONObject("anchorMin")
                 val anchorMax = rt.getJSONObject("anchorMax")
+
+                // Tịnh tiến tọa độ Screen → Local (relative to Root)
+                val localXMin = ((anchorMin.optDouble("x").toFloat() - rootXMin) / rootW).coerceIn(0f, 1f)
+                val localYMin = ((anchorMin.optDouble("y").toFloat() - rootYMin) / rootH).coerceIn(0f, 1f)
+                val localXMax = ((anchorMax.optDouble("x").toFloat() - rootXMin) / rootW).coerceIn(0f, 1f)
+                val localYMax = ((anchorMax.optDouble("y").toFloat() - rootYMin) / rootH).coerceIn(0f, 1f)
+                
+                val hasValidText = el.has("text")
+                val hasValidImage = el.has("image")
                 
                 val txtObj = el.optJSONObject("text")
                 val imgObj = el.optJSONObject("image")
-
-                val hasValidText = txtObj != null && txtObj.optBoolean("hasData", false)
-                val hasValidImage = imgObj != null && imgObj.optBoolean("hasData", false)
 
                 var oFontSize: Float? = null
                 var finalView: View? = null
 
                 // CỖ MÁY DỰNG VIEW LÕI KÉP
                 if (elementType == "MediaView") {
-                    // Nhánh Đặc Biệt của AdMob
                     val mediaView = com.google.android.gms.ads.nativead.MediaView(context)
                     if (hasValidImage) {
                         mediaView.setBackgroundColor(parseUnityColor(imgObj?.optString("color", "#FFFFFF") ?: "#FFFFFF"))
                     }
                     finalView = mediaView
+                } else if (elementType == "IconView") {
+                    // Tạo một ImageView rỗng (khuôn) cho Icon AdMob
+                    val iv = ImageView(context)
+                    iv.scaleType = ImageView.ScaleType.FIT_XY
+                    iv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    finalView = iv
                 } else if (hasValidText && hasValidImage) {
-                    // Xây Dựng Khối Chứa Ảnh Gộp Chữ (VD: Hộp Nút Bấm Call To Action)
                     val container = FrameLayout(context)
 
                     val iv = ImageView(context)
                     iv.scaleType = ImageView.ScaleType.FIT_XY
                     val htmlColor = imgObj?.optString("color", "#FFFFFF") ?: "#FFFFFF"
-                    iv.setBackgroundColor(parseUnityColor(htmlColor))
-                    val imgPath = imgObj?.optString("imagePath") ?: ""
-                    if (imgPath.isNotEmpty()) DynamicImageCache.loadImage(iv, imgPath)
+                    val imgPath = imgObj?.optString("imagePath")?.takeIf { it != "null" } ?: ""
+                    if (imgPath.isNotEmpty()) {
+                        // Có sprite PNG → TRANSPARENT để vùng alpha của ảnh không bị màu nền che
+                        iv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        DynamicImageCache.loadImage(iv, imgPath)
+                    } else {
+                        // imagePath=null trong JSON → chỉ có Unity Color → dùng màu solid
+                        iv.setBackgroundColor(parseUnityColor(htmlColor))
+                    }
 
                     val tv = TextView(context)
                     tv.text = txtObj?.optString("textContent", "")
@@ -198,10 +262,15 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     val fontSize = txtObj?.optDouble("fontSize", 14.0)?.toFloat() ?: 14f
                     oFontSize = fontSize
                     tv.gravity = parseGravity(txtObj?.optString("alignment", "MiddleCenter"))
+                    // Giữ includeFontPadding = true (default) — cần giữ padding buffer cho elements có nhiều không gian (ex: CTA button)
+                    
+                    // Giới hạn 1 dòng và thêm dấu "..." cho các nút bấm/nhãn
+                    tv.maxLines = 1
+                    tv.ellipsize = android.text.TextUtils.TruncateAt.END
+                    
                     applyTypeface(tv, txtObj?.optBoolean("isBold", false) ?: false, txtObj?.optBoolean("isItalic", false) ?: false)
 
-                    // Giữ TextView lại để Giai Đoạn 6 bơm Data AdMob
-                    registeredViews["${elementType}_Text"] = tv 
+                    registeredViews["${elementType}_Text"] = tv
 
                     container.addView(iv, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
                     container.addView(tv, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -211,10 +280,15 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     val iv = ImageView(context)
                     iv.scaleType = ImageView.ScaleType.FIT_XY
                     val htmlColor = imgObj?.optString("color", "#FFFFFF") ?: "#FFFFFF"
-                    iv.setBackgroundColor(parseUnityColor(htmlColor))
-                    val imgPath = imgObj?.optString("imagePath") ?: ""
-                    if (imgPath.isNotEmpty()) DynamicImageCache.loadImage(iv, imgPath)
-
+                    val imgPath = imgObj?.optString("imagePath")?.takeIf { it != "null" } ?: ""
+                    if (imgPath.isNotEmpty()) {
+                        // Có sprite PNG → TRANSPARENT để vùng alpha của ảnh không bị màu nền che
+                        iv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        DynamicImageCache.loadImage(iv, imgPath)
+                    } else {
+                        // imagePath=null trong JSON → chỉ có Unity Color → dùng màu solid
+                        iv.setBackgroundColor(parseUnityColor(htmlColor))
+                    }
                     finalView = iv
                 } else if (hasValidText) {
                     val tv = TextView(context)
@@ -223,6 +297,16 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     val fontSize = txtObj?.optDouble("fontSize", 14.0)?.toFloat() ?: 14f
                     oFontSize = fontSize
                     tv.gravity = parseGravity(txtObj?.optString("alignment", "MiddleCenter"))
+                    tv.includeFontPadding = false  // Bỏ padding ascent/descent để CENTER_VERTICAL thực sự căn giữa
+                    
+                    // Headline chỉ 1 dòng, Body có thể 2 dòng. Tránh tràn layout
+                    if (elementType == "Body") {
+                        tv.maxLines = 2
+                    } else {
+                        tv.maxLines = 1
+                    }
+                    tv.ellipsize = android.text.TextUtils.TruncateAt.END
+                    
                     applyTypeface(tv, txtObj?.optBoolean("isBold", false) ?: false, txtObj?.optBoolean("isItalic", false) ?: false)
 
                     finalView = tv
@@ -230,17 +314,13 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     finalView = View(context)
                 }
 
-                // Gắn tọa độ Toán Học và quăng vào Group
                 if (finalView != null) {
                     val bounds = NormBounds(
-                        anchorMin.optDouble("x").toFloat(),
-                        anchorMin.optDouble("y").toFloat(),
-                        anchorMax.optDouble("x").toFloat(),
-                        anchorMax.optDouble("y").toFloat(),
+                        localXMin, localYMin, localXMax, localYMax,
                         oFontSize
                     )
                     finalView.tag = bounds
-                    registeredViews[elementType] = finalView // Default view mapping for SDK Clicks
+                    registeredViews[elementType] = finalView
                     addView(finalView)
                 }
             }
@@ -301,12 +381,26 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
             
             child.layout(cLeft, cTop, cRight, cBottom)
 
-            // Auto Scale Size Chữ giống Canvas Scaler của Unity !!
-            if (bounds.originalFontSize != null && child is TextView) {
-                // Tỷ lệ giãn nở Y so với Bản vẽ Mẫu (vd: Màn hình to gấp rưỡi Layout Gốc thì ScaleY = 1.5)
-                val scaleY = h / referenceHeight
+            // Auto Scale Size Chữ: cần dùng screenHeight thực tế (không phải h của View đã bị thu nhỏ)
+            if (bounds.originalFontSize != null) {
+                val scaleY = screenHeight / referenceHeight
                 val finalPixelSize = bounds.originalFontSize * scaleY
-                child.setTextSize(TypedValue.COMPLEX_UNIT_PX, finalPixelSize)
+
+                // Trường hợp 1: child trực tiếp là TextView (element chỉ có text)
+                if (child is TextView) {
+                    child.setTextSize(TypedValue.COMPLEX_UNIT_PX, finalPixelSize)
+                }
+                // Trường hợp 2: child là FrameLayout chứa ImageView + TextView (element có cả text lẫn image)
+                // Ví dụ: CallToAction (nút xanh + chữ Install), AdAttribution (nền vàng + chữ Ad)
+                else if (child is FrameLayout) {
+                    for (j in 0 until child.childCount) {
+                        val innerChild = child.getChildAt(j)
+                        if (innerChild is TextView) {
+                            innerChild.setTextSize(TypedValue.COMPLEX_UNIT_PX, finalPixelSize)
+                            break
+                        }
+                    }
+                }
             }
         }
     }
