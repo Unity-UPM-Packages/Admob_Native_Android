@@ -1,16 +1,22 @@
 package com.thelegends.ads.admob_native_unity.decorator
 
 import android.app.Activity
+import android.util.Log
 import android.view.View
-import android.widget.ImageView
-import android.widget.ProgressBar
 import android.widget.TextView
 import com.google.android.gms.ads.nativead.NativeAd
-import com.orbitalsonic.sonictimer.SonicCountDownTimer
 import com.thelegends.admob_native_unity.NativeAdCallbacks
-import com.thelegends.ads.admob_native_unity.R
-import com.thelegends.ads.admob_native_unity.showbehavior.*
+import com.orbitalsonic.sonictimer.SonicCountDownTimer
+import com.thelegends.ads.admob_native_unity.showbehavior.BaseShowBehavior
+import com.thelegends.ads.admob_native_unity.showbehavior.DynamicShowBehavior
 
+/**
+ * GIAI ĐOẠN 7: Decorator đếm ngược thời gian.
+ *
+ * Triết lý thiết kế: Decorator này KHÔNG tự tạo View. Nó chỉ điều khiển BEHAVIOR.
+ * Tất cả View (CloseButton, CountdownText) đều được tạo từ JSON/Unity bởi DynamicAdBuilderLayout,
+ * và được lấy thông qua registeredViews["Decorator_CloseButton"], registeredViews["Decorator_CountdownText"].
+ */
 class CountdownDecorator(
     private val wrappedBehavior: BaseShowBehavior,
     private val initialDelaySeconds: Float,
@@ -18,13 +24,15 @@ class CountdownDecorator(
     private val closeButtonDelaySeconds: Float
 ) : BaseShowBehavior() {
 
+    private val TAG = "CountdownDecorator"
+
     private var initialDelayTimer: SonicCountDownTimer? = null
     private var countdownTimer: SonicCountDownTimer? = null
     private var closeButtonDelayTimer: SonicCountDownTimer? = null
 
-    private val countdownTimerDurationMillis = (countdownDurationSeconds * 1000).toLong()
-    private val initialDelayBeforeCountdownMillis = (initialDelaySeconds * 1000).toLong()
-    private val closeButtonClickableDelayMillis = (closeButtonDelaySeconds * 1000).toLong()
+    private val countdownDurationMillis = (countdownDurationSeconds * 1000).toLong()
+    private val initialDelayMillis = (initialDelaySeconds * 1000).toLong()
+    private val closeButtonDelayMillis = (closeButtonDelaySeconds * 1000).toLong()
 
     override fun show(
         activity: Activity,
@@ -33,15 +41,134 @@ class CountdownDecorator(
         callbacks: NativeAdCallbacks
     ) {
         activity.runOnUiThread {
+            // Bước 1: Cho wrapped behavior render UI trước
             wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
-            val view = wrappedBehavior.rootView
-            view?.let {
-                startCloseLogic(it, callbacks)
+            this.rootView = wrappedBehavior.rootView
+
+            // Bước 2: Lấy views từ registeredViews của DynamicAdBuilderLayout
+            // (Nhất quán với cách DynamicShowBehavior lấy Headline, Body, CTA...)
+            val dynamicBehavior = wrappedBehavior as? DynamicShowBehavior
+            val registeredViews = dynamicBehavior?.builderLayout?.registeredViews
+
+            if (registeredViews == null) {
+                Log.w(TAG, "registeredViews không tồn tại. CountdownDecorator chỉ hoạt động với DynamicShowBehavior.")
+                return@runOnUiThread
             }
+
+            val closeButton  = registeredViews["CloseButton"]
+            // Khi element có CẢ image + text, DynamicAdBuilderLayout lưu TextView vào key "${elementType}_Text"
+            // Còn registeredViews["CountdownText"] là FrameLayout container.
+            // Thử lấy TextView từ key _Text trước, fallback sang key gốc nếu chỉ có text thuần.
+            val countdownText: TextView? = (registeredViews["CountdownText_Text"]
+                ?: registeredViews["CountdownText"]) as? TextView
+            // Container là FrameLayout bọc ngoài (ảnh nền + text) — cần ẩn/hiện cùng với text
+            val countdownContainer: View? = registeredViews["CountdownText"]
+
+            Log.d(TAG, "CloseButton found: ${closeButton != null}, CountdownText found: ${countdownText != null}, Container: ${countdownContainer != null}")
+
+            startCloseLogic(closeButton, countdownText, countdownContainer, callbacks)
         }
     }
 
     override fun destroy() {
+        cancelAllTimers()
+        wrappedBehavior.destroy()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 1: Ẩn tất cả, chờ initialDelay trước khi đếm ngược
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun startCloseLogic(
+        closeButton: View?,
+        countdownText: TextView?,
+        countdownContainer: View?,
+        callbacks: NativeAdCallbacks
+    ) {
+        cancelAllTimers()
+
+        // Ẩn tất cả ngay từ đầu
+        closeButton?.visibility = View.GONE
+        closeButton?.isClickable = false
+        // Ẩn cả container (ảnh nền) lẫn TextView bên trong
+        countdownContainer?.visibility = View.GONE
+        countdownText?.visibility = View.GONE
+
+        // Gắn listener cho nút đóng (chỉ hoạt động khi isClickable = true)
+        closeButton?.setOnClickListener {
+            Log.d(TAG, "Nút đóng được nhấn. Huỷ quảng cáo.")
+            callbacks.onAdClosed()
+            destroy()
+        }
+
+        if (initialDelayMillis > 0) {
+            initialDelayTimer = object : SonicCountDownTimer(initialDelayMillis, 500) {
+                override fun onTimerTick(timeRemaining: Long) { /* Im lặng */ }
+                override fun onTimerFinish() {
+                    startMainCountdown(closeButton, countdownText, countdownContainer)
+                }
+            }
+            initialDelayTimer?.startCountDownTimer()
+        } else {
+            startMainCountdown(closeButton, countdownText, countdownContainer)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 2: Hiện CountdownText, tick mỗi giây, format "${seconds}s remaining"
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun startMainCountdown(closeButton: View?, countdownText: TextView?, countdownContainer: View?) {
+        // Hiện container (ảnh nền) và TextView, ẩn nút đóng
+        countdownContainer?.visibility = View.VISIBLE
+        countdownText?.visibility = View.VISIBLE
+        closeButton?.visibility = View.GONE
+
+        // Hiển thị giây ban đầu ngay lập tức (không chờ tick đầu tiên)
+        val initialSeconds = (countdownDurationMillis / 1000).toInt()
+        countdownText?.text = "${initialSeconds}s remaining"
+
+        countdownTimer = object : SonicCountDownTimer(countdownDurationMillis, 1000) {
+            override fun onTimerTick(timeRemaining: Long) {
+                val secondsRemaining = (timeRemaining / 1000).toInt()
+                if (secondsRemaining <= 0) {
+                    onTimerFinish()
+                    return
+                }
+                countdownText?.text = "${secondsRemaining}s remaining"
+            }
+
+            override fun onTimerFinish() {
+                // Ẩn cả container lẫn text
+                countdownContainer?.visibility = View.GONE
+                countdownText?.visibility = View.GONE
+                startCloseButtonDelay(closeButton)
+            }
+        }
+        countdownTimer?.startCountDownTimer()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 3: Hiện CloseButton, chờ closeButtonDelay rồi mới cho click
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun startCloseButtonDelay(closeButton: View?) {
+        closeButton?.visibility = View.VISIBLE
+        closeButton?.isClickable = false // Chưa cho click ngay
+
+        if (closeButtonDelayMillis > 0) {
+            closeButtonDelayTimer = object : SonicCountDownTimer(closeButtonDelayMillis, 100) {
+                override fun onTimerTick(timeRemaining: Long) { /* Im lặng */ }
+                override fun onTimerFinish() {
+                    closeButton?.isClickable = true
+                    Log.d(TAG, "Nút đóng đã được kích hoạt.")
+                }
+            }
+            closeButtonDelayTimer?.startCountDownTimer()
+        } else {
+            // Không có delay, cho click ngay
+            closeButton?.isClickable = true
+        }
+    }
+
+    private fun cancelAllTimers() {
         initialDelayTimer?.cancelCountDownTimer()
         initialDelayTimer = null
 
@@ -50,105 +177,5 @@ class CountdownDecorator(
 
         closeButtonDelayTimer?.cancelCountDownTimer()
         closeButtonDelayTimer = null
-
-        wrappedBehavior.destroy()
     }
-
-    private fun startCloseLogic(rootView: View, callbacks: NativeAdCallbacks) {
-        val closeButton = rootView.findViewById<ImageView>(R.id.ad_close_button)
-        val progressBar = rootView.findViewById<ProgressBar>(R.id.ad_progress_bar)
-        val countdownText = rootView.findViewById<TextView>(R.id.ad_countdown_text)
-
-        // Cancel any existing timers
-        initialDelayTimer?.cancelCountDownTimer()
-        countdownTimer?.cancelCountDownTimer()
-        closeButtonDelayTimer?.cancelCountDownTimer()
-
-        // PHASE 1: Initial state - Hide everything
-        closeButton?.visibility = View.GONE
-        progressBar?.visibility = View.GONE
-        countdownText?.visibility = View.GONE
-        closeButton?.isClickable = false
-
-        // TIMER 1: Initial delay before showing progress/countdown
-        initialDelayTimer = object : SonicCountDownTimer(initialDelayBeforeCountdownMillis, 100) {
-            override fun onTimerTick(timeRemaining: Long) {
-                // Silent countdown, no UI updates
-            }
-
-            override fun onTimerFinish() {
-                startMainCountdown(closeButton, progressBar, countdownText)
-            }
-        }
-        initialDelayTimer?.startCountDownTimer()
-
-        // Setup close button click listener (will only work when enabled)
-        closeButton?.setOnClickListener {
-            if (closeButton.isClickable) {
-                callbacks.onAdClosed()
-                destroy()
-            }
-        }
-    }
-
-    private fun startMainCountdown(
-        closeButton: ImageView?,
-        progressBar: ProgressBar?,
-        countdownText: TextView?
-    ) {
-        progressBar?.progress = 100  // Start from 100% and decrease
-
-        progressBar?.visibility = View.VISIBLE
-        countdownText?.visibility = View.VISIBLE
-        closeButton?.visibility = View.GONE
-
-        countdownTimer = object : SonicCountDownTimer(countdownTimerDurationMillis, 1000) {
-            override fun onTimerTick(timeRemaining: Long) {
-                val secondsRemaining = (timeRemaining / 1000).toInt()
-
-                // Stop showing countdown when it reaches 0, move to next phase immediately
-                if (secondsRemaining <= 0) {
-                    onTimerFinish()
-                    return
-                }
-
-                countdownText?.text = secondsRemaining.toString()
-
-                // Progress decreases from 100% to 0% to show remaining time
-                val progressPercent =
-                    (timeRemaining * 100 / countdownTimerDurationMillis).toInt().coerceAtLeast(0)
-                progressBar?.progress = progressPercent
-            }
-
-            override fun onTimerFinish() {
-                startCloseButtonDelay(closeButton, progressBar, countdownText)
-            }
-        }
-        countdownTimer?.startCountDownTimer()
-    }
-
-    private fun startCloseButtonDelay(
-        closeButton: ImageView?,
-        progressBar: ProgressBar?,
-        countdownText: TextView?
-    ) {
-        progressBar?.visibility = View.GONE
-        countdownText?.visibility = View.GONE
-        closeButton?.visibility = View.VISIBLE
-        closeButton?.isClickable = false
-
-
-        // TIMER 3: Close button clickable delay
-        closeButtonDelayTimer = object : SonicCountDownTimer(closeButtonClickableDelayMillis, 100) {
-            override fun onTimerTick(timeRemaining: Long) {
-                // Silent countdown, no UI updates
-            }
-
-            override fun onTimerFinish() {
-                closeButton?.isClickable = true
-            }
-        }
-        closeButtonDelayTimer?.startCountDownTimer()
-    }
-
 }
