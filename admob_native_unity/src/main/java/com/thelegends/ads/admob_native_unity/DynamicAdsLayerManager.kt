@@ -13,8 +13,7 @@ import android.widget.FrameLayout
 object DynamicAdsLayerManager {
 
     var layerBanner: FrameLayout? = null
-    var layerMrec: FrameLayout? = null
-    var layerInter: FrameLayout? = null
+    var layerFullscreen: FrameLayout? = null
 
     private var isInitialized = false
 
@@ -28,8 +27,7 @@ object DynamicAdsLayerManager {
         // Tạo 3 FrameLayout Vô Dấu Vết (Touch Pass-through) và nhét vào Mâm gốc
         // Lệnh addView đưa vào sau sẽ nằm lơ lửng đè lên trên lớp trước (Z-Order)
         layerBanner = createPassThroughLayer(activity).also { rootViewGroup.addView(it) }
-        layerMrec = createPassThroughLayer(activity).also { rootViewGroup.addView(it) }
-        layerInter = createPassThroughLayer(activity).also { rootViewGroup.addView(it) }
+        layerFullscreen = createPassThroughLayer(activity).also { rootViewGroup.addView(it) }
     }
 
     private fun createPassThroughLayer(activity: Activity): FrameLayout {
@@ -48,9 +46,8 @@ object DynamicAdsLayerManager {
 
     fun getLayer(layerName: String): FrameLayout? {
         return when (layerName) {
-            "BannerLayer" -> layerBanner
-            "MRECLayer" -> layerMrec
-            "FullscreenLayer" -> layerInter
+            "Banner" -> layerBanner
+            "FullScreen" -> layerFullscreen
             else -> layerBanner
         }
     }

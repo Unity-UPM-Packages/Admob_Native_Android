@@ -20,7 +20,7 @@ class DynamicShowBehavior(
 ) : BaseShowBehavior() {
 
     private val TAG = "DynamicShowBehavior"
-    private var builderLayout: DynamicAdBuilderLayout? = null
+    var builderLayout: DynamicAdBuilderLayout? = null
     private var targetBucket: FrameLayout? = null
     private var activityRef: java.lang.ref.WeakReference<Activity>? = null
 
@@ -40,8 +40,8 @@ class DynamicShowBehavior(
 
             // 1. Phân giải Tầng
             targetBucket = when (zLayerName) {
-                "MRECLayer" -> DynamicAdsLayerManager.layerMrec
-                "FullscreenLayer" -> DynamicAdsLayerManager.layerInter
+                "Banner" -> DynamicAdsLayerManager.layerBanner
+                "FullScreen" -> DynamicAdsLayerManager.layerFullscreen
                 else -> DynamicAdsLayerManager.layerBanner
             }
 
@@ -164,8 +164,20 @@ class DynamicShowBehavior(
     override fun destroy() {
         val activity = activityRef?.get() ?: return
         activity.runOnUiThread {
-            val parent = builderLayout?.parent as? ViewGroup
-            parent?.removeView(builderLayout)
+            // Remove NativeAdView (rootView) khỏi targetBucket
+            // (không chỉ remove customLayout con bên trong)
+            val adMobView = this.rootView
+            if (adMobView != null) {
+                val parent = adMobView.parent as? ViewGroup
+                parent?.removeView(adMobView)
+                Log.d(TAG, "NativeAdView đã được remove khỏi targetBucket.")
+            }
+
+            // Ẩn targetBucket nếu đã trống
+            if (targetBucket?.childCount == 0) {
+                targetBucket?.visibility = View.GONE
+            }
+
             builderLayout = null
             this.rootView = null
             Log.d(TAG, "Dynamic Ad view has been properly dissolved.")
