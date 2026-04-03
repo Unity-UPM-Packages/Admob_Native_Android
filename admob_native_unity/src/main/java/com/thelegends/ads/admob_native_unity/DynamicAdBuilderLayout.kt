@@ -75,7 +75,7 @@ object DynamicImageCache {
      * Tự động kiểm tra nếu có thông số border thì vẽ NinePatch (9-slice), 
      * nếu không có thì vẽ Bitmap thường.
      */
-    fun displayImage(context: Context, imageView: ImageView, path: String, border: JSONObject?) {
+    fun displayImage(context: Context, imageView: ImageView, path: String, border: JSONObject?, screenH: Float, refH: Float) {
         if (border == null) {
             loadImage(imageView, path)
             return
@@ -83,7 +83,7 @@ object DynamicImageCache {
 
         val cachedBitmap = memoryCache.get(path)
         if (cachedBitmap != null) {
-            applyNinePatch(context, imageView, cachedBitmap, border)
+            applyNinePatch(context, imageView, cachedBitmap, border, screenH, refH)
             return
         }
 
@@ -92,7 +92,7 @@ object DynamicImageCache {
                 val bitmap = BitmapFactory.decodeFile(path)
                 if (bitmap != null) {
                     memoryCache.put(path, bitmap)
-                    uiHandler.post { applyNinePatch(context, imageView, bitmap, border) }
+                    uiHandler.post { applyNinePatch(context, imageView, bitmap, border, screenH, refH) }
                 } else {
                     android.util.Log.e("DynamicUI", "-> Image FAILED: NULL bitmap at $path")
                 }
@@ -106,21 +106,38 @@ object DynamicImageCache {
      * Tạo NinePatchDrawable từ Bitmap và thông số border pixel.
      * Unity sprite.border = (left, bottom, right, top) tính bằng pixel của ảnh GỐC.
      */
-    private fun applyNinePatch(context: Context, imageView: ImageView, bitmap: Bitmap, border: JSONObject) {
-        val bw = bitmap.width
-        val bh = bitmap.height
+    private fun applyNinePatch(context: Context, imageView: ImageView, bitmap: Bitmap, border: JSONObject, screenH: Float, refH: Float) {
+        val ppum = border.optDouble("ppuMultiplier", 1.0).toFloat().takeIf { it > 0f } ?: 1f
+        // S = (1 / ppuMultiplier) * (screenHeight / referenceHeight)
+        val targetScale = (1f / ppum) * (screenH / refH)
 
-        val left   = border.optDouble("left",   0.0).toInt()
-        val bottom = border.optDouble("bottom", 0.0).toInt()
-        val right  = border.optDouble("right",  0.0).toInt()
-        val top    = border.optDouble("top",    0.0).toInt()
+        val oLeft   = border.optDouble("left",   0.0).toFloat()
+        val oBottom = border.optDouble("bottom", 0.0).toFloat()
+        val oRight  = border.optDouble("right",  0.0).toFloat()
+        val oTop    = border.optDouble("top",    0.0).toFloat()
 
-        android.util.Log.d("DynamicUI", "-> 9-Slice Processing: Img=${bw}x${bh}, Borders=[L:$left, R:$right, T:$top, B:$bottom]")
-
-        if (left == 0 && bottom == 0 && right == 0 && top == 0) {
+        if (oLeft == 0f && oBottom == 0f && oRight == 0f && oTop == 0f) {
             imageView.setImageBitmap(bitmap)
             return
         }
+
+        val scaledBw = (bitmap.width * targetScale).toInt().coerceAtLeast(1)
+        val scaledBh = (bitmap.height * targetScale).toInt().coerceAtLeast(1)
+
+        val scaledBitmap = try {
+            if (kotlin.math.abs(targetScale - 1f) < 0.01f) bitmap 
+            else Bitmap.createScaledBitmap(bitmap, scaledBw, scaledBh, true)
+        } catch (e: Exception) { bitmap }
+
+        val left   = (oLeft   * targetScale).toInt()
+        val right  = (oRight  * targetScale).toInt()
+        val top    = (oTop    * targetScale).toInt()
+        val bottom = (oBottom * targetScale).toInt()
+
+        val bw = scaledBitmap.width
+        val bh = scaledBitmap.height
+
+        android.util.Log.d("DynamicUI", "-> 9-Slice Processing: Original Img=${bitmap.width}x${bitmap.height}, Scaled=${bw}x${bh}, TargetScale=$targetScale, Pixels=[L:$left, R:$right, T:$top, B:$bottom]")
 
         try {
             // Tọa độ các đường cắt X (Trái -> Phải) và Y (Trên -> Dưới)
@@ -129,8 +146,8 @@ object DynamicImageCache {
 
             // Kiểm tra tính hợp lệ
             if (xDivs[0] >= xDivs[1] || yDivs[0] >= yDivs[1]) {
-                android.util.Log.w("DynamicUI", "-> 9-Slice WARNING: Invalid coordinates. Normal Stretch applied.")
-                imageView.setImageBitmap(bitmap)
+                android.util.Log.w("DynamicUI", "-> 9-Slice WARNING: Invalid scaled coordinates. Normal Stretch applied.")
+                imageView.setImageBitmap(scaledBitmap)
                 return
             }
 
@@ -171,20 +188,21 @@ object DynamicImageCache {
             val chunkBytes = buffer.array()
             
             if (NinePatch.isNinePatchChunk(chunkBytes)) {
-                val drawable = NinePatchDrawable(context.resources, bitmap, chunkBytes, android.graphics.Rect(), null)
+                // Force density so NinePatch doesn't mysteriously rescale again against the screen
+                scaledBitmap.density = context.resources.displayMetrics.densityDpi
+                val drawable = NinePatchDrawable(context.resources, scaledBitmap, chunkBytes, android.graphics.Rect(), null)
                 
-                // Dùng setBackground để NinePatch tự xử lý vùng dãn theo kích thước View
                 imageView.setImageDrawable(null) // Xóa Image foreground nếu có
                 imageView.background = drawable
                 
                 android.util.Log.d("DynamicUI", "-> 9-Slice SUCCESS: Using setBackground for perfect scaling.")
             } else {
                 android.util.Log.e("DynamicUI", "-> 9-Slice FAILED: Invalid chunk bytes.")
-                imageView.setImageBitmap(bitmap)
+                imageView.setImageBitmap(scaledBitmap)
             }
         } catch (e: Exception) {
             android.util.Log.e("DynamicUI", "-> 9-Slice ERROR: ${e.message}")
-            imageView.setImageBitmap(bitmap)
+            imageView.setImageBitmap(scaledBitmap)
         }
     }
 }
@@ -371,7 +389,7 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     if (imgPath.isNotEmpty()) {
                         iv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         val border = imgObj?.optJSONObject("border")
-                        DynamicImageCache.displayImage(context, iv, imgPath, border)
+                        DynamicImageCache.displayImage(context, iv, imgPath, border, screenHeight, referenceHeight)
                     } else {
                         // imagePath=null trong JSON → chỉ có Unity Color → dùng màu solid
                         iv.setBackgroundColor(parseUnityColor(htmlColor))
@@ -391,6 +409,22 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     
                     applyTypeface(tv, txtObj?.optBoolean("isBold", false) ?: false, txtObj?.optBoolean("isItalic", false) ?: false)
 
+                    val txtRt = txtObj?.optJSONObject("rectTransform")
+                    val tvBounds = if (txtRt != null) {
+                        val tAnchorMin = txtRt.getJSONObject("anchorMin")
+                        val tAnchorMax = txtRt.getJSONObject("anchorMax")
+                        NormBounds(
+                            tAnchorMin.optDouble("x").toFloat(),
+                            tAnchorMin.optDouble("y").toFloat(),
+                            tAnchorMax.optDouble("x").toFloat(),
+                            tAnchorMax.optDouble("y").toFloat(),
+                            oFontSize
+                        )
+                    } else {
+                        NormBounds(0f, 0f, 1f, 1f, oFontSize)
+                    }
+                    tv.tag = tvBounds
+
                     registeredViews["${elementType}_Text"] = tv
 
                     container.addView(iv, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -405,7 +439,7 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     if (imgPath.isNotEmpty()) {
                         iv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         val border = imgObj?.optJSONObject("border")
-                        DynamicImageCache.displayImage(context, iv, imgPath, border)
+                        DynamicImageCache.displayImage(context, iv, imgPath, border, screenHeight, referenceHeight)
                     } else {
                         // imagePath=null trong JSON → chỉ có Unity Color → dùng màu solid
                         iv.setBackgroundColor(parseUnityColor(htmlColor))
@@ -473,6 +507,25 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
             val childHeightSpec = MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY)
             
             child.measure(childWidthSpec, childHeightSpec)
+
+            // Measure inner children if it is our custom FrameLayout container (not MediaView)
+            if (child.javaClass == FrameLayout::class.java) {
+                val container = child as FrameLayout
+                for (j in 0 until container.childCount) {
+                    val innerChild = container.getChildAt(j)
+                    val innerBounds = innerChild.tag as? NormBounds
+                    if (innerBounds != null) {
+                        val icWidth = (childWidth * (innerBounds.xMax - innerBounds.xMin)).toInt().coerceAtLeast(0)
+                        val icHeight = (childHeight * (innerBounds.yMax - innerBounds.yMin)).toInt().coerceAtLeast(0)
+                        innerChild.measure(
+                            MeasureSpec.makeMeasureSpec(icWidth, MeasureSpec.EXACTLY),
+                            MeasureSpec.makeMeasureSpec(icHeight, MeasureSpec.EXACTLY)
+                        )
+                    } else {
+                        innerChild.measure(childWidthSpec, childHeightSpec) // MATCH_PARENT
+                    }
+                }
+            }
         }
     }
 
@@ -501,6 +554,26 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
             val cBottom = (h * (1f - bounds.yMin)).toInt()
             
             child.layout(cLeft, cTop, cRight, cBottom)
+
+            // Layout inner children based on their relative coordinates inside the container
+            if (child.javaClass == FrameLayout::class.java) {
+                val container = child as FrameLayout
+                val cWidth = cRight - cLeft
+                val cHeight = cBottom - cTop
+                for (j in 0 until container.childCount) {
+                    val innerChild = container.getChildAt(j)
+                    val innerBounds = innerChild.tag as? NormBounds
+                    if (innerBounds != null) {
+                        val icLeft = (cWidth * innerBounds.xMin).toInt()
+                        val icRight = (cWidth * innerBounds.xMax).toInt()
+                        val icTop = (cHeight * (1f - innerBounds.yMax)).toInt()
+                        val icBottom = (cHeight * (1f - innerBounds.yMin)).toInt()
+                        innerChild.layout(icLeft, icTop, icRight, icBottom)
+                    } else {
+                        innerChild.layout(0, 0, cWidth, cHeight)
+                    }
+                }
+            }
 
             // Auto Scale Size Chữ: cần dùng screenHeight thực tế (không phải h của View đã bị thu nhỏ)
             if (bounds.originalFontSize != null) {
