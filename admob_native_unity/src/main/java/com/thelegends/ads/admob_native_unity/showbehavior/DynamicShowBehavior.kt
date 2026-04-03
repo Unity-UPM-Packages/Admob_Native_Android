@@ -157,7 +157,6 @@ class DynamicShowBehavior(
             
             // Lôi thùng chứa ra đầu
             targetBucket?.visibility = View.VISIBLE
-            targetBucket?.bringToFront()
         }
     }
 
