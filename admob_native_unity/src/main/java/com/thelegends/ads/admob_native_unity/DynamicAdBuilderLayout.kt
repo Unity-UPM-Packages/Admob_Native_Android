@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.NinePatch
 import android.graphics.Typeface
+import android.graphics.drawable.NinePatchDrawable
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
@@ -17,6 +19,7 @@ import android.widget.TextView
 import com.google.android.gms.ads.nativead.NativeAdView
 import org.json.JSONObject
 import java.util.concurrent.Executors
+
 
 /**
  * LruCache Mộc (Nguyên thủy): Thay thế hoàn toàn Glide!
@@ -64,6 +67,124 @@ object DynamicImageCache {
                 android.util.Log.e("DynamicUI", "-> VỠ TRẬN! Crash khi load ảnh từ: $path - Lỗi: ${e.message}")
                 e.printStackTrace()
             }
+        }
+    }
+
+    /**
+     * RENDER IMAGE: Load ảnh và hiển thị. 
+     * Tự động kiểm tra nếu có thông số border thì vẽ NinePatch (9-slice), 
+     * nếu không có thì vẽ Bitmap thường.
+     */
+    fun displayImage(context: Context, imageView: ImageView, path: String, border: JSONObject?) {
+        if (border == null) {
+            loadImage(imageView, path)
+            return
+        }
+
+        val cachedBitmap = memoryCache.get(path)
+        if (cachedBitmap != null) {
+            applyNinePatch(context, imageView, cachedBitmap, border)
+            return
+        }
+
+        executor.execute {
+            try {
+                val bitmap = BitmapFactory.decodeFile(path)
+                if (bitmap != null) {
+                    memoryCache.put(path, bitmap)
+                    uiHandler.post { applyNinePatch(context, imageView, bitmap, border) }
+                } else {
+                    android.util.Log.e("DynamicUI", "-> Image FAILED: NULL bitmap at $path")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DynamicUI", "-> Image CRASHED: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Tạo NinePatchDrawable từ Bitmap và thông số border pixel.
+     * Unity sprite.border = (left, bottom, right, top) tính bằng pixel của ảnh GỐC.
+     */
+    private fun applyNinePatch(context: Context, imageView: ImageView, bitmap: Bitmap, border: JSONObject) {
+        val bw = bitmap.width
+        val bh = bitmap.height
+
+        val left   = border.optDouble("left",   0.0).toInt()
+        val bottom = border.optDouble("bottom", 0.0).toInt()
+        val right  = border.optDouble("right",  0.0).toInt()
+        val top    = border.optDouble("top",    0.0).toInt()
+
+        android.util.Log.d("DynamicUI", "-> 9-Slice Processing: Img=${bw}x${bh}, Borders=[L:$left, R:$right, T:$top, B:$bottom]")
+
+        if (left == 0 && bottom == 0 && right == 0 && top == 0) {
+            imageView.setImageBitmap(bitmap)
+            return
+        }
+
+        try {
+            // Tọa độ các đường cắt X (Trái -> Phải) và Y (Trên -> Dưới)
+            val xDivs = intArrayOf(left, bw - right)
+            val yDivs = intArrayOf(top, bh - bottom)
+
+            // Kiểm tra tính hợp lệ
+            if (xDivs[0] >= xDivs[1] || yDivs[0] >= yDivs[1]) {
+                android.util.Log.w("DynamicUI", "-> 9-Slice WARNING: Invalid coordinates. Normal Stretch applied.")
+                imageView.setImageBitmap(bitmap)
+                return
+            }
+
+            val numColors = 9
+            val NO_COLOR  = 0x00000001.toInt()
+            val colors    = IntArray(numColors) { NO_COLOR }
+
+            // Cấu trúc 32 bytes Header CHUẨN của Android:
+            // [1byte wasDeser][1byte numX][1byte numY][1byte numColors] -> 4 bytes
+            // [4bytes xDivsOffset][4bytes yDivsOffset] -> 8 bytes
+            // [16bytes padding L,R,T,B] -> 16 bytes
+            // [4bytes reserved/skipFlags] -> 4 bytes (TỔNG: 32 bytes)
+            val buffer = java.nio.ByteBuffer
+                .allocate(32 + (xDivs.size + yDivs.size + colors.size) * 4)
+                .order(java.nio.ByteOrder.nativeOrder())
+
+            // 1. Meta (4 bytes)
+            buffer.put(1.toByte())
+            buffer.put(xDivs.size.toByte())
+            buffer.put(yDivs.size.toByte())
+            buffer.put(numColors.toByte())
+
+            // 2. Offsets (8 bytes - dùng 0 để Runtime tự xử lý)
+            buffer.putInt(0)
+            buffer.putInt(0)
+
+            // 3. Padding (16 bytes - không padding nội dung)
+            buffer.putInt(0); buffer.putInt(0); buffer.putInt(0); buffer.putInt(0)
+
+            // 4. RESERVED (4 bytes - CỰC KỲ QUAN TRỌNG ĐỂ KHÔNG BỊ LỆCH MẢNG)
+            buffer.putInt(0)
+
+            // 5. Data (2*4 + 2*4 + 9*4 = 52 bytes)
+            for (v in xDivs) buffer.putInt(v)
+            for (v in yDivs) buffer.putInt(v)
+            for (c in colors) buffer.putInt(c)
+
+            val chunkBytes = buffer.array()
+            
+            if (NinePatch.isNinePatchChunk(chunkBytes)) {
+                val drawable = NinePatchDrawable(context.resources, bitmap, chunkBytes, android.graphics.Rect(), null)
+                
+                // Dùng setBackground để NinePatch tự xử lý vùng dãn theo kích thước View
+                imageView.setImageDrawable(null) // Xóa Image foreground nếu có
+                imageView.background = drawable
+                
+                android.util.Log.d("DynamicUI", "-> 9-Slice SUCCESS: Using setBackground for perfect scaling.")
+            } else {
+                android.util.Log.e("DynamicUI", "-> 9-Slice FAILED: Invalid chunk bytes.")
+                imageView.setImageBitmap(bitmap)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DynamicUI", "-> 9-Slice ERROR: ${e.message}")
+            imageView.setImageBitmap(bitmap)
         }
     }
 }
@@ -248,9 +369,9 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     val htmlColor = imgObj?.optString("color", "#FFFFFF") ?: "#FFFFFF"
                     val imgPath = imgObj?.optString("imagePath")?.takeIf { it != "null" } ?: ""
                     if (imgPath.isNotEmpty()) {
-                        // Có sprite PNG → TRANSPARENT để vùng alpha của ảnh không bị màu nền che
                         iv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                        DynamicImageCache.loadImage(iv, imgPath)
+                        val border = imgObj?.optJSONObject("border")
+                        DynamicImageCache.displayImage(context, iv, imgPath, border)
                     } else {
                         // imagePath=null trong JSON → chỉ có Unity Color → dùng màu solid
                         iv.setBackgroundColor(parseUnityColor(htmlColor))
@@ -282,9 +403,9 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     val htmlColor = imgObj?.optString("color", "#FFFFFF") ?: "#FFFFFF"
                     val imgPath = imgObj?.optString("imagePath")?.takeIf { it != "null" } ?: ""
                     if (imgPath.isNotEmpty()) {
-                        // Có sprite PNG → TRANSPARENT để vùng alpha của ảnh không bị màu nền che
                         iv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                        DynamicImageCache.loadImage(iv, imgPath)
+                        val border = imgObj?.optJSONObject("border")
+                        DynamicImageCache.displayImage(context, iv, imgPath, border)
                     } else {
                         // imagePath=null trong JSON → chỉ có Unity Color → dùng màu solid
                         iv.setBackgroundColor(parseUnityColor(htmlColor))
