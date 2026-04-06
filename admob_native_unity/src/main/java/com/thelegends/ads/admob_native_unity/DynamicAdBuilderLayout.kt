@@ -401,8 +401,7 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                     val fontSize = txtObj?.optDouble("fontSize", 14.0)?.toFloat() ?: 14f
                     oFontSize = fontSize
                     tv.gravity = parseGravity(txtObj?.optString("alignment", "MiddleCenter"))
-                    // Giữ includeFontPadding = true (default) — cần giữ padding buffer cho elements có nhiều không gian (ex: CTA button)
-                    
+                    tv.includeFontPadding = false  // Bỏ padding ascent/descent để CENTER_VERTICAL thực sự căn giữa, rất quan trọng khi TextView có bounding box sát với chữ
                     // Giới hạn 1 dòng và thêm dấu "..." cho các nút bấm/nhãn
                     tv.maxLines = 1
                     tv.ellipsize = android.text.TextUtils.TruncateAt.END
