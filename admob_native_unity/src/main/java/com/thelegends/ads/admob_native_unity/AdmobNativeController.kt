@@ -8,25 +8,40 @@ import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.thelegends.ads.admob_native_unity.decorator.*
 import com.thelegends.ads.admob_native_unity.showbehavior.*
-import java.util.concurrent.Callable
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.FutureTask
+import java.lang.ref.WeakReference
+
 /**
  * Main Controller for AdMob Native Ads on Android.
- * Orchestrates the full lifecycle of a native ad: Load -> Show -> Interaction -> Destroy.
+ * Orchestrates the full lifecycle of a native ad: Load → Show → Interaction → Destroy.
  * Supports hybrid rendering (XML-based or Dynamic JSON-based).
+ *
+ * Design notes:
+ * - [activity] is held as a [WeakReference] to prevent Activity leaks across configuration changes.
+ * - [getWidthInPixels] / [getHeightInPixels] use async callbacks instead of blocking FutureTask
+ *   to eliminate deadlock risk when called from the main thread.
+ * - [layoutJsonConfig] and [zLayerConfig] are annotated @Volatile to prevent race conditions
+ *   when written from Unity's JNI bridge thread and read on the Android UI thread.
  */
 class AdmobNativeController(
-    private val activity: Activity,
+    activity: Activity,
     private val callbacks: NativeAdCallbacks
 ) {
+    // FIX #1: WeakReference prevents Activity Leak across configuration changes / session reuse
+    private val activityRef: WeakReference<Activity> = WeakReference(activity)
 
     private var loadedNativeAd: NativeAd? = null
     private var currentShowBehavior: IShowBehavior? = null
 
     private val TAG = "AdmobNativeController"
 
+    // ── Core Lifecycle ────────────────────────────────────────────────────────
+
     fun loadAd(adUnitId: String, adRequest: AdRequest) {
+        val activity = activityRef.get() ?: run {
+            Log.e(TAG, "Activity has been destroyed. Cannot load ad.")
+            return
+        }
+
         activity.runOnUiThread {
             Log.d(TAG, "Loading native ad for Ad Unit ID: $adUnitId on UI thread.")
 
@@ -92,31 +107,28 @@ class AdmobNativeController(
     }
 
     fun showAd(layoutName: String) {
+        val activity = activityRef.get() ?: run {
+            Log.e(TAG, "Activity has been destroyed. Cannot show ad.")
+            return
+        }
+
         Log.d(TAG, "Show ads")
         val adToShow = loadedNativeAd ?: run {
             Log.e(TAG, "Ad not available. Call loadAd() first.")
             return
         }
 
-
         currentShowBehavior?.destroy()
 
         // Hybrid Assembly: Choose behavior based on whether a JSON layout is provided
-        var behavior: BaseShowBehavior = if (layoutJsonConfig != null && zLayerConfig != null) {
+        val dynamicBehavior: DynamicShowBehavior? = if (layoutJsonConfig != null && zLayerConfig != null) {
             DynamicShowBehavior(layoutJsonConfig!!, zLayerConfig!!)
-        } else {
-            BaseShowBehavior()
-        }
+        } else null
 
-        if (positionConfig != null) {
-            behavior = PositionDecorator(
-                behavior,
-                this,
-                positionConfig!!.x,
-                positionConfig!!.y
-            )
+        // Capture direct reference before decorators wrap it, for reliable dimension queries later
+        innerDynamicBehavior = dynamicBehavior
 
-        }
+        var behavior: BaseShowBehavior = dynamicBehavior ?: BaseShowBehavior()
 
         if (countdownConfig != null) {
             behavior = CountdownDecorator(
@@ -126,7 +138,6 @@ class AdmobNativeController(
                 countdownConfig!!.closeDelay
             )
         }
-
 
         behavior.show(activity, adToShow, layoutName, callbacks)
         currentShowBehavior = behavior
@@ -140,6 +151,7 @@ class AdmobNativeController(
 
             currentShowBehavior?.destroy()
             currentShowBehavior = null
+            innerDynamicBehavior = null
 
             loadedNativeAd?.destroy()
             loadedNativeAd = null
@@ -152,52 +164,51 @@ class AdmobNativeController(
 
     fun isAdAvailable(): Boolean = loadedNativeAd != null
 
-    fun getResponseInfo(): ResponseInfo? {
-        return loadedNativeAd?.responseInfo
-    }
+    fun getResponseInfo(): ResponseInfo? = loadedNativeAd?.responseInfo
+
+    // ── Video & Revenue Callbacks ─────────────────────────────────────────────
 
     private fun setupAdCallbacks(ad: NativeAd) {
-        val videoLifecycleCallbacks =
-            object : VideoController.VideoLifecycleCallbacks() {
-                override fun onVideoStart() {
-                    activity.runOnUiThread {
-                        Log.d(TAG, "Video started.")
-                        callbacks.onVideoStart()
-                    }
-                }
-
-                override fun onVideoPlay() {
-                    activity.runOnUiThread {
-                        Log.d(TAG, "Video played.")
-                        callbacks.onVideoPlay()
-                    }
-                }
-
-                override fun onVideoPause() {
-                    activity.runOnUiThread {
-                        Log.d(TAG, "Video paused.")
-                        callbacks.onVideoPause()
-                    }
-                }
-
-                override fun onVideoEnd() {
-                    activity.runOnUiThread {
-                        Log.d(TAG, "Video ended.")
-                        callbacks.onVideoEnd()
-                    }
-                }
-
-                override fun onVideoMute(isMuted: Boolean) {
-                    activity.runOnUiThread {
-                        Log.d(TAG, "Video isMuted: $isMuted.")
-                        callbacks.onVideoMute(isMuted)
-                    }
+        val videoLifecycleCallbacks = object : VideoController.VideoLifecycleCallbacks() {
+            override fun onVideoStart() {
+                activityRef.get()?.runOnUiThread {
+                    Log.d(TAG, "Video started.")
+                    callbacks.onVideoStart()
                 }
             }
+
+            override fun onVideoPlay() {
+                activityRef.get()?.runOnUiThread {
+                    Log.d(TAG, "Video played.")
+                    callbacks.onVideoPlay()
+                }
+            }
+
+            override fun onVideoPause() {
+                activityRef.get()?.runOnUiThread {
+                    Log.d(TAG, "Video paused.")
+                    callbacks.onVideoPause()
+                }
+            }
+
+            override fun onVideoEnd() {
+                activityRef.get()?.runOnUiThread {
+                    Log.d(TAG, "Video ended.")
+                    callbacks.onVideoEnd()
+                }
+            }
+
+            override fun onVideoMute(isMuted: Boolean) {
+                activityRef.get()?.runOnUiThread {
+                    Log.d(TAG, "Video isMuted: $isMuted.")
+                    callbacks.onVideoMute(isMuted)
+                }
+            }
+        }
         ad.mediaContent?.videoController?.videoLifecycleCallbacks = videoLifecycleCallbacks
 
         ad.setOnPaidEventListener { adValue ->
-            activity.runOnUiThread {
+            activityRef.get()?.runOnUiThread {
                 Log.d(TAG, "Paid event received: $adValue")
                 callbacks.onPaidEvent(
                     adValue.precisionType,
@@ -208,8 +219,91 @@ class AdmobNativeController(
         }
     }
 
-    //region CountdownDecorator
+    // ── Dimension Queries ─────────────────────────────────────────────────────
 
+    /**
+     * Queries the rendered ad width asynchronously and delivers the result via [onResult].
+     *
+     * FIX #2: Replaced blocking FutureTask.get() with a non-blocking async callback to
+     * eliminate the deadlock that occurred when this method was called from the UI thread.
+     *
+     * For Dynamic layouts, always returns the root ad rect width via [DynamicShowBehavior].
+     * For XML layouts, falls back to the "ad_content" view lookup.
+     *
+     * @param onResult Called on the UI thread with the width in pixels, or -1 if unavailable.
+     */
+    fun getWidthInPixels(onResult: (Float) -> Unit) {
+        val activity = activityRef.get() ?: run {
+            onResult(-1f)
+            return
+        }
+        activity.runOnUiThread {
+            val width = resolveAdWidth(activity)
+            Log.d(TAG, "Ad width resolved: $width px")
+            onResult(width)
+        }
+    }
+
+    /**
+     * Queries the rendered ad height asynchronously and delivers the result via [onResult].
+     *
+     * FIX #2: Same deadlock fix as [getWidthInPixels].
+     *
+     * @param onResult Called on the UI thread with the height in pixels, or -1 if unavailable.
+     */
+    fun getHeightInPixels(onResult: (Float) -> Unit) {
+        val activity = activityRef.get() ?: run {
+            onResult(-1f)
+            return
+        }
+        activity.runOnUiThread {
+            val height = resolveAdHeight(activity)
+            Log.d(TAG, "Ad height resolved: $height px")
+            onResult(height)
+        }
+    }
+
+    // FIX #3: Dynamic layout → read from rootPixelRect; XML layout → R.id fallback
+    private fun resolveAdWidth(activity: Activity): Float {
+        // DynamicShowBehavior path: use pre-computed pixel rect (no R.id dependency)
+        val dynamicBehavior = unwrapDynamicBehavior()
+        if (dynamicBehavior != null) {
+            return dynamicBehavior.renderer?.getRootPixelRect()?.width()?.toFloat() ?: -1f
+        }
+
+        // XML layout path: find view by resource ID
+        val adContent = findAdContentView(activity)
+        return adContent?.width?.toFloat() ?: -1f
+    }
+
+    private fun resolveAdHeight(activity: Activity): Float {
+        val dynamicBehavior = unwrapDynamicBehavior()
+        if (dynamicBehavior != null) {
+            return dynamicBehavior.renderer?.getRootPixelRect()?.height()?.toFloat() ?: -1f
+        }
+
+        val adContent = findAdContentView(activity)
+        return adContent?.height?.toFloat() ?: -1f
+    }
+
+    /**
+     * Returns the [DynamicShowBehavior] if it is the active behavior (possibly wrapped by decorators).
+     * We keep a direct reference [innerDynamicBehavior] set at assembly time to avoid
+     * traversing private decorator fields.
+     */
+    private var innerDynamicBehavior: DynamicShowBehavior? = null
+
+    private fun unwrapDynamicBehavior(): DynamicShowBehavior? = innerDynamicBehavior
+
+    private fun findAdContentView(activity: Activity): View? {
+        val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
+        val id = activity.resources.getIdentifier("ad_content", "id", activity.packageName)
+        return if (id != 0) adContainer?.findViewById(id) else null
+    }
+
+    // ── Configuration DSL ─────────────────────────────────────────────────────
+
+    //region CountdownDecorator
     private data class CountdownConfig(val initial: Float, val duration: Float, val closeDelay: Float)
 
     private var countdownConfig: CountdownConfig? = null
@@ -224,24 +318,14 @@ class AdmobNativeController(
         }
         return this
     }
-
     //endregion
-
-    //region PositionDecorator
-    private data class PositionConfig(val x: Int, val y: Int)
-
-    private var positionConfig: PositionConfig? = null
-
-    fun withPosition(positionX: Int, positionY: Int): AdmobNativeController {
-        this.positionConfig = PositionConfig(positionX, positionY)
-        return this
-    }
 
     //endregion
 
     //region Dynamic Native UI Support
-    var layoutJsonConfig: String? = null
-    var zLayerConfig: String? = null
+    // FIX #4: @Volatile ensures visibility across Unity JNI bridge thread → Android UI thread
+    @Volatile var layoutJsonConfig: String? = null
+    @Volatile var zLayerConfig: String? = null
 
     fun withLayoutJson(jsonPayload: String): AdmobNativeController {
         this.layoutJsonConfig = jsonPayload
@@ -255,60 +339,8 @@ class AdmobNativeController(
     //endregion
 
     private fun resetAllConfigs() {
-        countdownConfig = null
-        positionConfig = null
+        countdownConfig  = null
         layoutJsonConfig = null
-        zLayerConfig = null
+        zLayerConfig     = null
     }
-
-    fun getWidthInPixels(): Float {
-        val task = FutureTask(Callable<Int> {
-            val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
-            val adContent = adContainer?.findViewById<View>(
-                activity.resources.getIdentifier("ad_content", "id", activity.packageName)
-            )
-            adContent?.width ?: 0
-        })
-
-        activity.runOnUiThread(task)
-
-        try {
-            return task.get().toFloat()
-        } catch (e: InterruptedException) {
-            Log.e(TAG, "Failed to get ad view width (Interrupted): ${e.localizedMessage}")
-            Thread.currentThread().interrupt() // Khôi phục trạng thái interrupt
-        } catch (e: ExecutionException) {
-            Log.e(TAG, "Failed to get ad view width (Execution): ${e.localizedMessage}")
-        }
-
-        return -1.0f
-    }
-
-    fun getHeightInPixels(): Float {
-        val task = FutureTask(Callable<Int> {
-            val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
-            val adContent = adContainer?.findViewById<View>(
-                activity.resources.getIdentifier("ad_content", "id", activity.packageName)
-            )
-            adContent?.height ?: 0
-        })
-
-        activity.runOnUiThread(task)
-
-        try {
-            return task.get().toFloat()
-        } catch (e: InterruptedException) {
-            Log.e(TAG, "Failed to get ad view width (Interrupted): ${e.localizedMessage}")
-            Thread.currentThread().interrupt() // Khôi phục trạng thái interrupt
-        } catch (e: ExecutionException) {
-            Log.e(TAG, "Failed to get ad view width (Execution): ${e.localizedMessage}")
-        }
-
-        return -1.0f
-    }
-
-
-
-
-
 }
