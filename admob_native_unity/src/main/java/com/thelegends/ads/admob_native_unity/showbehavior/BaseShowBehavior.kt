@@ -10,8 +10,11 @@ import android.widget.TextView
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
 import com.thelegends.admob_native_unity.NativeAdCallbacks
-import com.thelegends.ads.admob_native_unity.R
 
+/**
+ * Base class for Native Ad rendering behaviors.
+ * Supports both XML-based layouts and recursive view discovery.
+ */
 open class BaseShowBehavior : IShowBehavior {
 
     private val TAG = this.javaClass.simpleName
@@ -54,9 +57,16 @@ open class BaseShowBehavior : IShowBehavior {
 
             val adContentView = activity.layoutInflater.inflate(layoutId, adContainer, false)
 
-            val nativeAdView = adContentView.findViewById<NativeAdView>(R.id.native_ad_view)
+            // Resolve NativeAdView: First by standard ID "native_ad_view", then by recursive search
+            val nativeAdViewId = activity.resources.getIdentifier("native_ad_view", "id", activity.packageName)
+            val nativeAdView = if (nativeAdViewId != 0) {
+                adContentView.findViewById<NativeAdView>(nativeAdViewId)
+            } else {
+                findNativeAdViewRecursively(adContentView)
+            }
+
             if (nativeAdView == null) {
-                Log.e(TAG, "NativeAdView with ID 'native_ad_view' not found in layout '$layoutName'.")
+                Log.e(TAG, "NativeAdView component not found in layout '$layoutName'. Ensure a NativeAdView exists in the hierarchy.")
                 (this.rootView?.parent as? ViewGroup)?.removeView(this.rootView)
                 this.rootView = null
                 return@runOnUiThread
@@ -166,8 +176,21 @@ open class BaseShowBehavior : IShowBehavior {
         }
 
         adView.setNativeAd(nativeAd)
-
-        Log.d(TAG, "Ad view has been shown")
+        Log.d(TAG, "Ad view has been successfully rendered.")
     }
 
+    /**
+     * Traverses the view tree to locate the first instance of a NativeAdView.
+     * Useful for layouts where IDs are stripped or mapped dynamically.
+     */
+    private fun findNativeAdViewRecursively(view: View): NativeAdView? {
+        if (view is NativeAdView) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val found = findNativeAdViewRecursively(view.getChildAt(i))
+                if (found != null) return found
+            }
+        }
+        return null
+    }
 }

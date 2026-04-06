@@ -7,12 +7,13 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.google.android.gms.ads.nativead.NativeAd
 import com.thelegends.admob_native_unity.NativeAdCallbacks
-import com.thelegends.ads.admob_native_unity.DynamicAdBuilderLayout
-import com.thelegends.ads.admob_native_unity.DynamicAdsLayerManager
+import com.thelegends.ads.admob_native_unity.NativeAdUnityRenderer
+import com.thelegends.ads.admob_native_unity.NativeAdLayerManager
 
 /**
- * GIAI ĐOẠN 5: Bộ Xử Lý Khởi Chạy UI Động (Thay thế BaseShowBehavior khi có JSON)
- * Ném toàn bộ Giao diện đúc từ JSON vào 3 Tầng Kính (Z-Layer) chống thủng Notch.
+ * Orchestrates the rendering of dynamic Native Ads using JSON blueprints.
+ * Injects the generated UI into specialized Z-ordered layers (Buckets) to ensure
+ * consistency across various screen types and notch configurations.
  */
 class DynamicShowBehavior(
     private val jsonPayload: String, 
@@ -20,7 +21,7 @@ class DynamicShowBehavior(
 ) : BaseShowBehavior() {
 
     private val TAG = "DynamicShowBehavior"
-    var builderLayout: DynamicAdBuilderLayout? = null
+    var renderer: NativeAdUnityRenderer? = null
     private var targetBucket: FrameLayout? = null
     private var activityRef: java.lang.ref.WeakReference<Activity>? = null
 
@@ -33,33 +34,31 @@ class DynamicShowBehavior(
         this.activityRef = java.lang.ref.WeakReference(activity)
 
         activity.runOnUiThread {
-            Log.d(TAG, "Kích hoạt Dynamic Native UI cho: $layoutName, Layer: $zLayerName")
+            Log.d(TAG, "Activating Dynamic Native UI for: $layoutName, Layer: $zLayerName")
             
-            // 0. Bắt buộc mọc rễ các Tầng Kính (Bucket) nếu chưa có
-            DynamicAdsLayerManager.init(activity)
+            // 0. Ensure the Global Bucket Layers are initialized
+            NativeAdLayerManager.init(activity)
 
-            // 1. Phân giải Tầng
+            // 1. Resolve target layer
             targetBucket = when (zLayerName) {
-                "Banner" -> DynamicAdsLayerManager.layerBanner
-                "FullScreen" -> DynamicAdsLayerManager.layerFullscreen
-                else -> DynamicAdsLayerManager.layerBanner
+                "Banner" -> NativeAdLayerManager.layerBanner
+                "FullScreen" -> NativeAdLayerManager.layerFullscreen
+                else -> NativeAdLayerManager.layerBanner
             }
 
             if (targetBucket == null) {
-                Log.e(TAG, "Lỗi: Không tìm thấy Tầng Kính (Bucket) phù hợp!")
+                Log.e(TAG, "Critical Fault: Suitable Z-Layer Bucket not found!")
                 return@runOnUiThread
             }
 
-            // 3. Tạc tượng View nội dung & Đúc JSON trước để lấy Root bounds
-            val customLayout = DynamicAdBuilderLayout(activity)
+            // 3. Construct Content View & Pre-render JSON to extract Root boundary
+            val customLayout = NativeAdUnityRenderer(activity)
             customLayout.buildFromJson(jsonPayload)
 
-            // Lấy Pixel Rect của RootAdView (Left, Top, Right, Bottom) để sizing NativeAdView
+            // Fetch the localized Pixel Rect of the RootAdView to size the AdMob NativeAdView anchor
             val rootRect = customLayout.getRootPixelRect()
             val adWidth  = if (rootRect.width()  > 0) rootRect.width()  else ViewGroup.LayoutParams.MATCH_PARENT
             val adHeight = if (rootRect.height() > 0) rootRect.height() else ViewGroup.LayoutParams.MATCH_PARENT
-
-            Log.d(TAG, "Sizing NativeAdView: w=$adWidth h=$adHeight left=${rootRect.left} top=${rootRect.top}")
 
             // 2. Tạo NativeAdView với kích thước chính xác (không còn MATCH_PARENT → không block touch)
             val adMobView = com.google.android.gms.ads.nativead.NativeAdView(activity)
@@ -69,19 +68,19 @@ class DynamicShowBehavior(
             }
             adMobView.layoutParams = adMobParams
 
-            // customLayout phủ kín bên trong NativeAdView (với tọas độ đã được normalize về local)
+            // customLayout fills the NativeAdView container (using normalized local coordinates)
             customLayout.layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
-            this.builderLayout = customLayout
+            this.renderer = customLayout
             this.rootView = adMobView
 
-            // 4. Nhét Custom Layout vào trong AdMob View (Composition)
+            // 4. Composition: Inject Custom Layout into the AdMob View
             adMobView.addView(customLayout)
 
-            // 5. Truyền Hồn (Giai đoạn 6 - Data Binding)
+            // 5. Data Binding (Giai đoạn 6) - Mapping NativeAd assets to the rendered views
             val tvHeadline = (customLayout.registeredViews["Headline_Text"] as? android.widget.TextView) ?: (customLayout.registeredViews["Headline"] as? android.widget.TextView)
             tvHeadline?.text = nativeAd.headline
             adMobView.headlineView = customLayout.registeredViews["Headline"]
@@ -163,23 +162,20 @@ class DynamicShowBehavior(
     override fun destroy() {
         val activity = activityRef?.get() ?: return
         activity.runOnUiThread {
-            // Remove NativeAdView (rootView) khỏi targetBucket
-            // (không chỉ remove customLayout con bên trong)
+            // Decouple NativeAdView (rootView) from the target bucket
             val adMobView = this.rootView
             if (adMobView != null) {
                 val parent = adMobView.parent as? ViewGroup
                 parent?.removeView(adMobView)
-                Log.d(TAG, "NativeAdView đã được remove khỏi targetBucket.")
             }
 
-            // Ẩn targetBucket nếu đã trống
+            // Hide bucket if empty to prevent touch interference
             if (targetBucket?.childCount == 0) {
                 targetBucket?.visibility = View.GONE
             }
 
-            builderLayout = null
+            renderer = null
             this.rootView = null
-            Log.d(TAG, "Dynamic Ad view has been properly dissolved.")
         }
     }
 }
