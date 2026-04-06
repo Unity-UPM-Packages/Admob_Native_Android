@@ -369,9 +369,6 @@ class DynamicAdBuilderLayout(context: Context) : FrameLayout(context) {
                 // CỖ MÁY DỰNG VIEW LÕI KÉP
                 if (elementType == "MediaView") {
                     val mediaView = com.google.android.gms.ads.nativead.MediaView(context)
-                    if (hasValidImage) {
-                        mediaView.setBackgroundColor(parseUnityColor(imgObj?.optString("color", "#FFFFFF") ?: "#FFFFFF"))
-                    }
                     finalView = mediaView
                 } else if (elementType == "IconView") {
                     // Tạo một ImageView rỗng (khuôn) cho Icon AdMob
