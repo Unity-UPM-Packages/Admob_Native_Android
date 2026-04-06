@@ -11,6 +11,11 @@ import com.thelegends.ads.admob_native_unity.showbehavior.*
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
+/**
+ * Main Controller for AdMob Native Ads on Android.
+ * Orchestrates the full lifecycle of a native ad: Load -> Show -> Interaction -> Destroy.
+ * Supports hybrid rendering (XML-based or Dynamic JSON-based).
+ */
 class AdmobNativeController(
     private val activity: Activity,
     private val callbacks: NativeAdCallbacks
@@ -102,7 +107,7 @@ class AdmobNativeController(
 
         currentShowBehavior?.destroy()
 
-        // Lắp ráp Lưỡng Cực (Hybrid Assembly)
+        // Hybrid Assembly: Choose behavior based on whether a JSON layout is provided
         var behavior: BaseShowBehavior = if (layoutJsonConfig != null && zLayerConfig != null) {
             DynamicShowBehavior(layoutJsonConfig!!, zLayerConfig!!)
         } else {

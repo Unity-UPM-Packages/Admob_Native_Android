@@ -9,13 +9,14 @@ import android.os.CountDownTimer
 import com.thelegends.admob_native_unity.NativeAdCallbacks
 import com.thelegends.ads.admob_native_unity.showbehavior.BaseShowBehavior
 import com.thelegends.ads.admob_native_unity.showbehavior.DynamicShowBehavior
+import com.thelegends.ads.admob_native_unity.NativeAdUnityRenderer
 
 /**
- * GIAI ĐOẠN 7: Decorator đếm ngược thời gian.
+ * Decorator that adds a countdown-to-close behavior to Native Ads.
  *
- * Triết lý thiết kế: Decorator này KHÔNG tự tạo View. Nó chỉ điều khiển BEHAVIOR.
- * Tất cả View (CloseButton, CountdownText) đều được tạo từ JSON/Unity bởi DynamicAdBuilderLayout,
- * và được lấy thông qua registeredViews["Decorator_CloseButton"], registeredViews["Decorator_CountdownText"].
+ * Design Philosophy: This decorator does NOT create its own views. It controls logic.
+ * CloseButton and CountdownText elements are expected to be present in the JSON blueprint 
+ * and managed by the underlying DynamicShowBehavior/NativeAdUnityRenderer.
  */
 class CountdownDecorator(
     private val wrappedBehavior: BaseShowBehavior,
@@ -41,27 +42,24 @@ class CountdownDecorator(
         callbacks: NativeAdCallbacks
     ) {
         activity.runOnUiThread {
-            // Bước 1: Cho wrapped behavior render UI trước
+            // Step 1: Allow the wrapped behavior to render the UI first
             wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
             this.rootView = wrappedBehavior.rootView
 
-            // Bước 2: Lấy views từ registeredViews của DynamicAdBuilderLayout
-            // (Nhất quán với cách DynamicShowBehavior lấy Headline, Body, CTA...)
+            // Step 2: Retrieve views from the NativeAdUnityRenderer's registry
             val dynamicBehavior = wrappedBehavior as? DynamicShowBehavior
-            val registeredViews = dynamicBehavior?.builderLayout?.registeredViews
+            val registeredViews = dynamicBehavior?.renderer?.registeredViews
 
             if (registeredViews == null) {
-                Log.w(TAG, "registeredViews không tồn tại. CountdownDecorator chỉ hoạt động với DynamicShowBehavior.")
+                Log.w(TAG, "registeredViews is null. CountdownDecorator only works with DynamicShowBehavior.")
                 return@runOnUiThread
             }
 
             val closeButton  = registeredViews["CloseButton"]
-            // Khi element có CẢ image + text, DynamicAdBuilderLayout lưu TextView vào key "${elementType}_Text"
-            // Còn registeredViews["CountdownText"] là FrameLayout container.
-            // Thử lấy TextView từ key _Text trước, fallback sang key gốc nếu chỉ có text thuần.
+            // If the element has internal text (e.g. background image + label), it is stored as "${elementType}_Text"
             val countdownText: TextView? = (registeredViews["CountdownText_Text"]
                 ?: registeredViews["CountdownText"]) as? TextView
-            // Container là FrameLayout bọc ngoài (ảnh nền + text) — cần ẩn/hiện cùng với text
+            // Container for the countdown (e.g. the background image frame)
             val countdownContainer: View? = registeredViews["CountdownText"]
 
             Log.d(TAG, "CloseButton found: ${closeButton != null}, CountdownText found: ${countdownText != null}, Container: ${countdownContainer != null}")
@@ -86,16 +84,15 @@ class CountdownDecorator(
     ) {
         cancelAllTimers()
 
-        // Ẩn tất cả ngay từ đầu
+        // Explicitly hide all elements initially
         closeButton?.visibility = View.GONE
         closeButton?.isClickable = false
-        // Ẩn cả container (ảnh nền) lẫn TextView bên trong
         countdownContainer?.visibility = View.GONE
         countdownText?.visibility = View.GONE
 
-        // Gắn listener cho nút đóng (chỉ hoạt động khi isClickable = true)
+        // Attached click listener to the close button (only functional when isClickable = true)
         closeButton?.setOnClickListener {
-            Log.d(TAG, "Nút đóng được nhấn. Huỷ quảng cáo.")
+            Log.d(TAG, "Close button clicked. Dissolving Ad.")
             callbacks.onAdClosed()
             destroy()
         }
