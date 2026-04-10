@@ -1,7 +1,6 @@
 package com.thelegends.ads.admob_native_unity.coordinate
 
 import android.graphics.Rect
-import android.util.DisplayMetrics
 import com.thelegends.ads.admob_native_unity.model.NormBounds
 import com.thelegends.ads.admob_native_unity.model.RootBounds
 
@@ -13,15 +12,24 @@ import com.thelegends.ads.admob_native_unity.model.RootBounds
  *  - Unity: Y=0 at bottom, Y=1 at top
  *  - Android: Y=0 at top, increasing downward
  *
- * @param metrics    Display metrics of the current screen (provides widthPixels/heightPixels)
- * @param rootBounds Normalized Unity screen-space bounds of the RootAdView element
+ * IMPORTANT: [screenWidthPx] and [screenHeightPx] must be the REAL full-screen
+ * dimensions (including navigation bar / status bar area), NOT the values from
+ * `context.resources.displayMetrics` which may exclude system UI decorations.
+ * Unity's `Screen.width/height` always reports the full physical resolution,
+ * so the native side must match to avoid coordinate misalignment on devices
+ * with virtual navigation bars.
+ *
+ * @param screenWidthPx   Full physical screen width in pixels
+ * @param screenHeightPx  Full physical screen height in pixels
+ * @param rootBounds      Normalized Unity screen-space bounds of the RootAdView element
  */
 class AdCoordinateMapper(
-    metrics: DisplayMetrics,
+    screenWidthPx: Int,
+    screenHeightPx: Int,
     private val rootBounds: RootBounds
 ) {
-    val screenWidth:  Float = metrics.widthPixels.toFloat()
-    val screenHeight: Float = metrics.heightPixels.toFloat()
+    val screenWidth:  Float = screenWidthPx.toFloat()
+    val screenHeight: Float = screenHeightPx.toFloat()
 
     /** Pixel-precise bounding rect of the root ad container on the physical screen. */
     val rootPixelRect: Rect by lazy {
