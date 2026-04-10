@@ -81,8 +81,11 @@ class NativeAdUnityRenderer(
             return
         }
 
-        val metrics = context.resources.displayMetrics
-        val mapper  = AdCoordinateMapper(metrics, layoutData.rootBounds)
+        // CRITICAL: Use the REAL full-screen dimensions (including nav bar / status bar).
+        // context.resources.displayMetrics.heightPixels EXCLUDES the navigation bar on some devices,
+        // causing a mismatch with Unity's Screen.height which always reports full physical resolution.
+        val (realW, realH) = getRealScreenSize(context)
+        val mapper  = AdCoordinateMapper(realW, realH, layoutData.rootBounds)
 
         rootPixelRect = mapper.rootPixelRect
         layoutEngine  = NormBoundsLayoutEngine(mapper.screenHeight, layoutData.referenceHeight)
@@ -131,5 +134,28 @@ class NativeAdUnityRenderer(
 
     private companion object {
         private const val TAG = "NativeAdUnityRenderer"
+
+        /**
+         * Returns the REAL full physical screen size in pixels, including areas occupied
+         * by the navigation bar, status bar, and any system UI decorations.
+         *
+         * This must match Unity's `Screen.width` / `Screen.height` which always report the
+         * full physical resolution regardless of system UI overlays.
+         */
+        @Suppress("DEPRECATION")
+        fun getRealScreenSize(context: Context): Pair<Int, Int> {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                // API 30+ : WindowMetrics provides the full bounds
+                val wm = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+                val bounds = wm.currentWindowMetrics.bounds
+                return Pair(bounds.width(), bounds.height())
+            } else {
+                // API < 30 : Use deprecated Display.getRealMetrics
+                val wm = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+                val realMetrics = android.util.DisplayMetrics()
+                wm.defaultDisplay.getRealMetrics(realMetrics)
+                return Pair(realMetrics.widthPixels, realMetrics.heightPixels)
+            }
+        }
     }
 }
