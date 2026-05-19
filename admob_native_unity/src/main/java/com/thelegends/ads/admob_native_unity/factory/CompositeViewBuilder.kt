@@ -41,8 +41,7 @@ class CompositeViewBuilder : ElementViewBuilder {
         )
 
         // Layer 2 — text overlay
-        // Composite always uses 1 line (even for Body elements) to avoid overflow on button shapes
-        val tv = buildTextView(ctx, textData, includeFontPadding = true, maxLinesOverride = 1)
+        val tv = buildTextView(ctx, textData, includeFontPadding = true)
 
         // Tag the TextView with its optional sub-rect for inner-child layout pass
         tv.tag = buildInnerTextBounds(textData)

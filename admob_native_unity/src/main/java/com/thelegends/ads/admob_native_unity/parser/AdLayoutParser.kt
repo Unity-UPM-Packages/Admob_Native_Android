@@ -90,8 +90,8 @@ class AdLayoutParser {
     }
 
     private fun parseTextData(txtObj: JSONObject, elementType: String): TextData {
-        // Body elements may wrap to 2 lines; all other text elements are single-line
-        val maxLines = if (elementType == "Body") 2 else 1
+        // All text elements are now restricted to a single-line
+        val maxLines = 1
 
         val rectTransform = txtObj.optJSONObject("rectTransform")?.let { rt ->
             val tMin = rt.getJSONObject("anchorMin")
