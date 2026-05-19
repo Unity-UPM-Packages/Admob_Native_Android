@@ -13,7 +13,7 @@ import com.thelegends.ads.admob_native_unity.utils.parseUnityColor
  *
  * Notable behaviours:
  *  - [TextView.includeFontPadding] = false (improves vertical centering for single-line labels)
- *  - maxLines respects the parsed value (Body = 2, all others = 1)
+ *  - maxLines respects the parsed value (currently always 1)
  *  - Font size storage in [view.tag] is handled externally by the layout engine
  */
 class TextOnlyViewBuilder : ElementViewBuilder {
@@ -36,20 +36,18 @@ class TextOnlyViewBuilder : ElementViewBuilder {
  *
  * @param includeFontPadding true for composite overlays (preserves visual headroom),
  *                           false for standalone text labels (tighter vertical centering)
- * @param maxLinesOverride   When non-null, overrides [TextData.maxLines] (composite always uses 1)
  */
 internal fun buildTextView(
     ctx: ViewBuilderContext,
     textData: TextData,
-    includeFontPadding: Boolean,
-    maxLinesOverride: Int? = null
+    includeFontPadding: Boolean
 ): TextView {
     return TextView(ctx.context).apply {
         text                    = textData.textContent
         setTextColor(parseUnityColor(textData.color))
         gravity                 = parseGravity(textData.alignment)
         this.includeFontPadding = includeFontPadding
-        maxLines                = maxLinesOverride ?: textData.maxLines
+        maxLines                = textData.maxLines
         ellipsize               = TextUtils.TruncateAt.END
         applyTypeface(this, textData.isBold, textData.isItalic)
         // Font size is intentionally NOT set here — the NormBoundsLayoutEngine applies

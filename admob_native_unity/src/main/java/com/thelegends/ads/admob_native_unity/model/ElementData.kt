@@ -21,7 +21,7 @@ data class RectBoundsData(
  * @param isBold            Whether bold style should be applied
  * @param isItalic          Whether italic style should be applied
  * @param includeFontPadding Whether to include top/bottom font padding (true for composite overlays)
- * @param maxLines          Maximum number of visible text lines (Body elements allow 2)
+ * @param maxLines          Maximum number of visible text lines (currently always 1)
  * @param rectTransform     Optional sub-rect for the text inside a composite (text + image) element
  */
 data class TextData(
