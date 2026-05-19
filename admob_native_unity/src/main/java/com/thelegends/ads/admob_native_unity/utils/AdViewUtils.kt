@@ -6,6 +6,7 @@ import android.view.Gravity
 import android.widget.TextView
 import android.graphics.Typeface
 import androidx.annotation.ColorInt
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Converts a Unity RGBA HTML color string (#RRGGBBAA) to an Android color integer (#AARRGGBB).
@@ -45,16 +46,39 @@ fun parseGravity(alignment: String?): Int {
     }
 }
 
+private val typefaceCache = ConcurrentHashMap<String, Typeface>()
+
 /**
- * Applies bold/italic [Typeface] styling to a [TextView].
- * No-op when both flags are false (system default typeface is preserved).
+ * Applies a custom font (if provided) and bold/italic styling to a [TextView].
+ * Custom fonts are loaded from assets/NativeAdFonts and cached for performance.
  */
-fun applyTypeface(tv: TextView, isBold: Boolean, isItalic: Boolean) {
+fun applyTypeface(tv: TextView, fontName: String?, isBold: Boolean, isItalic: Boolean) {
     val style = when {
         isBold && isItalic -> Typeface.BOLD_ITALIC
         isBold             -> Typeface.BOLD
         isItalic           -> Typeface.ITALIC
-        else               -> return
+        else               -> Typeface.NORMAL
     }
-    tv.setTypeface(null, style)
+
+    var baseTypeface: Typeface? = null
+    if (!fontName.isNullOrEmpty()) {
+        try {
+            baseTypeface = typefaceCache.getOrPut(fontName) {
+                try {
+                    Typeface.createFromAsset(tv.context.assets, "NativeAdFonts/$fontName.ttf")
+                } catch (e: Exception) {
+                    Typeface.createFromAsset(tv.context.assets, "NativeAdFonts/$fontName.otf")
+                }
+            }
+        } catch (e: Exception) {
+            // Fallback to system font if custom font file is missing
+            baseTypeface = null
+        }
+    }
+
+    if (baseTypeface != null) {
+        tv.setTypeface(baseTypeface, style)
+    } else {
+        tv.setTypeface(null, style)
+    }
 }

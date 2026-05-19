@@ -27,6 +27,7 @@ data class RectBoundsData(
 data class TextData(
     val textContent: String,
     val color: String,
+    val fontName: String?,
     val fontSize: Float,
     val alignment: String,
     val isBold: Boolean,

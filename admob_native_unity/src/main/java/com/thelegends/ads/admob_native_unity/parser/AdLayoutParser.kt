@@ -110,6 +110,7 @@ class AdLayoutParser {
             isBold             = txtObj.optBoolean("isBold", false),
             isItalic           = txtObj.optBoolean("isItalic", false),
             includeFontPadding = false, // builders override this based on composite context
+            fontName           = txtObj.optString("fontName", "").takeIf { it.isNotEmpty() },
             maxLines           = maxLines,
             rectTransform      = rectTransform
         )
