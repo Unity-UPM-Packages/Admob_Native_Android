@@ -49,7 +49,7 @@ internal fun buildTextView(
         this.includeFontPadding = includeFontPadding
         maxLines                = textData.maxLines
         ellipsize               = TextUtils.TruncateAt.END
-        applyTypeface(this, textData.isBold, textData.isItalic)
+        applyTypeface(this, textData.fontName, textData.isBold, textData.isItalic)
         // Font size is intentionally NOT set here — the NormBoundsLayoutEngine applies
         // density-aware scaling in onLayout() based on NormBounds.originalFontSize.
     }
