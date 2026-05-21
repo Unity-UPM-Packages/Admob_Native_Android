@@ -3,31 +3,34 @@ package com.thelegends.admob_native_unity
 
 import com.google.android.gms.ads.LoadAdError
 
-/**
- * Interface định nghĩa các callback cho AdmobNativeController.
- * Cả ứng dụng test (Android Studio) và Unity đều sẽ implement interface này.
- */
-interface NativeAdCallbacks  {
-    // Tải quảng cáo
+interface IAdLoadCallback {
     fun onAdLoaded()
     fun onAdFailedToLoad(error: LoadAdError)
-    fun onAdShow();
-    fun onAdClosed();
+}
 
-    // Doanh thu
-    fun onPaidEvent(precisionType: Int, valueMicros: Long, currencyCode: String)
+interface IAdInteractionCallback {
+    fun onAdShow()
+    fun onAdClosed()
     fun onAdDidRecordImpression()
     fun onAdClicked()
+    fun onAdShowedFullScreenContent()
+    fun onAdDismissedFullScreenContent()
+}
 
-    // Video
+interface IAdVideoCallback {
     fun onVideoStart()
     fun onVideoEnd()
     fun onVideoMute(isMuted: Boolean)
     fun onVideoPlay()
     fun onVideoPause()
-
-    fun onAdShowedFullScreenContent()
-    fun onAdDismissedFullScreenContent()
-
-
 }
+
+interface IAdRevenueCallback {
+    fun onPaidEvent(precisionType: Int, valueMicros: Long, currencyCode: String)
+}
+
+/**
+ * Interface định nghĩa các callback tổng hợp (dành cho Unity JNI Bridge).
+ * Các thành phần native nội bộ nên sử dụng các interface nhỏ lẻ ở trên (ISP).
+ */
+interface NativeAdCallbacks : IAdLoadCallback, IAdInteractionCallback, IAdVideoCallback, IAdRevenueCallback

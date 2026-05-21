@@ -24,13 +24,25 @@ import java.lang.ref.WeakReference
  */
 class AdmobNativeController(
     activity: Activity,
-    private val callbacks: NativeAdCallbacks
+    private val loadCallback: IAdLoadCallback? = null,
+    private val interactionCallback: IAdInteractionCallback? = null,
+    private val videoCallback: IAdVideoCallback? = null,
+    private val revenueCallback: IAdRevenueCallback? = null
 ) {
+    // Secondary constructor for Unity JNI compatibility
+    constructor(activity: Activity, callbacks: NativeAdCallbacks) : this(
+        activity,
+        loadCallback = callbacks,
+        interactionCallback = callbacks,
+        videoCallback = callbacks,
+        revenueCallback = callbacks
+    )
     // FIX #1: WeakReference prevents Activity Leak across configuration changes / session reuse
     private val activityRef: WeakReference<Activity> = WeakReference(activity)
 
     private var loadedNativeAd: NativeAd? = null
     private var currentShowBehavior: IShowBehavior? = null
+    private var innerDynamicBehavior: DynamicShowBehavior? = null
 
     private val TAG = "AdmobNativeController"
 
@@ -61,41 +73,41 @@ class AdmobNativeController(
                         Log.d(TAG, "Ad loaded successfully.")
                         this.loadedNativeAd = ad
                         setupAdCallbacks(ad)
-                        callbacks.onAdLoaded()
+                        loadCallback?.onAdLoaded()
                     }
                 }
                 .withAdListener(object : AdListener() {
                     override fun onAdFailedToLoad(adError: LoadAdError) {
                         activity.runOnUiThread {
                             Log.d(TAG, "Ad load failed: ${adError.message}")
-                            callbacks.onAdFailedToLoad(adError)
+                            loadCallback?.onAdFailedToLoad(adError)
                         }
                     }
 
                     override fun onAdClicked() {
                         activity.runOnUiThread {
-                            callbacks.onAdClicked()
+                            interactionCallback?.onAdClicked()
                             Log.d(TAG, "Ad clicked.")
                         }
                     }
 
                     override fun onAdImpression() {
                         activity.runOnUiThread {
-                            callbacks.onAdDidRecordImpression()
+                            interactionCallback?.onAdDidRecordImpression()
                             Log.d(TAG, "Ad impression recorded.")
                         }
                     }
 
                     override fun onAdOpened() {
                         activity.runOnUiThread {
-                            callbacks.onAdShowedFullScreenContent()
+                            interactionCallback?.onAdShowedFullScreenContent()
                             Log.d(TAG, "Ad opened Full Screen Content.")
                         }
                     }
 
                     override fun onAdClosed() {
                         activity.runOnUiThread {
-                            callbacks.onAdDismissedFullScreenContent()
+                            interactionCallback?.onAdDismissedFullScreenContent()
                             Log.d(TAG, "Ad closed Full Screen Content.")
                         }
                     }
@@ -128,21 +140,22 @@ class AdmobNativeController(
         // Capture direct reference before decorators wrap it, for reliable dimension queries later
         innerDynamicBehavior = dynamicBehavior
 
-        var behavior: BaseShowBehavior = dynamicBehavior ?: BaseShowBehavior()
+        var behavior: IShowBehavior = dynamicBehavior ?: XibShowBehavior()
 
         if (countdownConfig != null) {
             behavior = CountdownDecorator(
                 behavior,
                 countdownConfig!!.initial,
                 countdownConfig!!.duration,
-                countdownConfig!!.closeDelay
+                countdownConfig!!.closeDelay,
+                onClose = { destroyAd() }
             )
         }
 
-        behavior.show(activity, adToShow, layoutName, callbacks)
+        behavior.show(activity, adToShow, layoutName)
         currentShowBehavior = behavior
 
-        callbacks.onAdShow()
+        interactionCallback?.onAdShow()
     }
 
     fun destroyAd() {
@@ -156,7 +169,7 @@ class AdmobNativeController(
             loadedNativeAd?.destroy()
             loadedNativeAd = null
 
-            callbacks.onAdClosed()
+            interactionCallback?.onAdClosed()
 
             Log.d(TAG, "Native ad has been destroyed.")
         }
@@ -173,35 +186,35 @@ class AdmobNativeController(
             override fun onVideoStart() {
                 activityRef.get()?.runOnUiThread {
                     Log.d(TAG, "Video started.")
-                    callbacks.onVideoStart()
+                    videoCallback?.onVideoStart()
                 }
             }
 
             override fun onVideoPlay() {
                 activityRef.get()?.runOnUiThread {
                     Log.d(TAG, "Video played.")
-                    callbacks.onVideoPlay()
+                    videoCallback?.onVideoPlay()
                 }
             }
 
             override fun onVideoPause() {
                 activityRef.get()?.runOnUiThread {
                     Log.d(TAG, "Video paused.")
-                    callbacks.onVideoPause()
+                    videoCallback?.onVideoPause()
                 }
             }
 
             override fun onVideoEnd() {
                 activityRef.get()?.runOnUiThread {
                     Log.d(TAG, "Video ended.")
-                    callbacks.onVideoEnd()
+                    videoCallback?.onVideoEnd()
                 }
             }
 
             override fun onVideoMute(isMuted: Boolean) {
                 activityRef.get()?.runOnUiThread {
                     Log.d(TAG, "Video isMuted: $isMuted.")
-                    callbacks.onVideoMute(isMuted)
+                    videoCallback?.onVideoMute(isMuted)
                 }
             }
         }
@@ -210,7 +223,7 @@ class AdmobNativeController(
         ad.setOnPaidEventListener { adValue ->
             activityRef.get()?.runOnUiThread {
                 Log.d(TAG, "Paid event received: $adValue")
-                callbacks.onPaidEvent(
+                revenueCallback?.onPaidEvent(
                     adValue.precisionType,
                     adValue.valueMicros,
                     adValue.currencyCode
@@ -291,12 +304,12 @@ class AdmobNativeController(
      * We keep a direct reference [innerDynamicBehavior] set at assembly time to avoid
      * traversing private decorator fields.
      */
-    private var innerDynamicBehavior: DynamicShowBehavior? = null
+    // Ref kept for getting dimensions directly from the JSON layout renderer
 
     private fun unwrapDynamicBehavior(): DynamicShowBehavior? = innerDynamicBehavior
 
     private fun findAdContentView(activity: Activity): View? {
-        val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
+        val adContainer = currentShowBehavior?.getRootView()
         val id = activity.resources.getIdentifier("ad_content", "id", activity.packageName)
         return if (id != 0) adContainer?.findViewById(id) else null
     }

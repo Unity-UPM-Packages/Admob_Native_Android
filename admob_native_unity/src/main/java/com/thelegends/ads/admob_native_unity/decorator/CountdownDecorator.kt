@@ -6,8 +6,7 @@ import android.view.View
 import android.widget.TextView
 import com.google.android.gms.ads.nativead.NativeAd
 import android.os.CountDownTimer
-import com.thelegends.admob_native_unity.NativeAdCallbacks
-import com.thelegends.ads.admob_native_unity.showbehavior.BaseShowBehavior
+import com.thelegends.ads.admob_native_unity.showbehavior.IShowBehavior
 import com.thelegends.ads.admob_native_unity.showbehavior.DynamicShowBehavior
 import com.thelegends.ads.admob_native_unity.NativeAdUnityRenderer
 
@@ -19,11 +18,12 @@ import com.thelegends.ads.admob_native_unity.NativeAdUnityRenderer
  * and managed by the underlying DynamicShowBehavior/NativeAdUnityRenderer.
  */
 class CountdownDecorator(
-    private val wrappedBehavior: BaseShowBehavior,
+    private val wrappedBehavior: IShowBehavior,
     private val initialDelaySeconds: Float,
     private val countdownDurationSeconds: Float,
-    private val closeButtonDelaySeconds: Float
-) : BaseShowBehavior() {
+    private val closeButtonDelaySeconds: Float,
+    private val onClose: () -> Unit
+) : IShowBehavior {
 
     private val TAG = "CountdownDecorator"
 
@@ -38,17 +38,14 @@ class CountdownDecorator(
     override fun show(
         activity: Activity,
         nativeAd: NativeAd,
-        layoutName: String,
-        callbacks: NativeAdCallbacks
+        layoutName: String
     ) {
         activity.runOnUiThread {
             // Step 1: Allow the wrapped behavior to render the UI first
-            wrappedBehavior.show(activity, nativeAd, layoutName, callbacks)
-            this.rootView = wrappedBehavior.rootView
+            wrappedBehavior.show(activity, nativeAd, layoutName)
 
-            // Step 2: Retrieve views from the NativeAdUnityRenderer's registry
-            val dynamicBehavior = wrappedBehavior as? DynamicShowBehavior
-            val registeredViews = dynamicBehavior?.renderer?.registeredViews
+            // Step 2: Retrieve views from the wrapped behavior's registry
+            val registeredViews = wrappedBehavior.getRegisteredViews()
 
             if (registeredViews == null) {
                 Log.w(TAG, "registeredViews is null. CountdownDecorator only works with DynamicShowBehavior.")
@@ -64,13 +61,20 @@ class CountdownDecorator(
 
             Log.d(TAG, "CloseButton found: ${closeButton != null}, CountdownText found: ${countdownText != null}, Container: ${countdownContainer != null}")
 
-            startCloseLogic(closeButton, countdownText, countdownContainer, callbacks)
+            startCloseLogic(closeButton, countdownText, countdownContainer)
         }
     }
 
+    override fun getRootView(): View? = wrappedBehavior.getRootView()
+
+    override fun getRegisteredViews(): Map<String, View>? = wrappedBehavior.getRegisteredViews()
+
     override fun destroy() {
-        cancelAllTimers()
-        wrappedBehavior.destroy()
+        try {
+            cancelAllTimers()
+        } finally {
+            wrappedBehavior.destroy()
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -79,8 +83,7 @@ class CountdownDecorator(
     private fun startCloseLogic(
         closeButton: View?,
         countdownText: TextView?,
-        countdownContainer: View?,
-        callbacks: NativeAdCallbacks
+        countdownContainer: View?
     ) {
         cancelAllTimers()
 
@@ -93,8 +96,7 @@ class CountdownDecorator(
         // Attached click listener to the close button (only functional when isClickable = true)
         closeButton?.setOnClickListener {
             Log.d(TAG, "Close button clicked. Dissolving Ad.")
-            callbacks.onAdClosed()
-            destroy()
+            onClose()
         }
 
         if (initialDelayMillis > 0) {

@@ -15,11 +15,10 @@ import com.thelegends.admob_native_unity.NativeAdCallbacks
  * Base class for Native Ad rendering behaviors.
  * Supports both XML-based layouts and recursive view discovery.
  */
-open class BaseShowBehavior : IShowBehavior {
+class XibShowBehavior : IShowBehavior {
 
     private val TAG = this.javaClass.simpleName
-    internal var rootView: FrameLayout? = null
-        internal set
+    private var rootView: FrameLayout? = null
 
     private var activityRef: java.lang.ref.WeakReference<Activity>? = null
 
@@ -27,8 +26,7 @@ open class BaseShowBehavior : IShowBehavior {
     override fun show(
         activity: Activity,
         nativeAd: NativeAd,
-        layoutName: String,
-        callbacks: NativeAdCallbacks
+        layoutName: String
     ) {
         this.activityRef = java.lang.ref.WeakReference(activity)
 
@@ -88,8 +86,12 @@ open class BaseShowBehavior : IShowBehavior {
 
     }
 
-    fun getRootView(): View? {
+    override fun getRootView(): View? {
         return this.rootView
+    }
+
+    override fun getRegisteredViews(): Map<String, View>? {
+        return null // XIB doesn't map registered views out
     }
 
     private fun findViewId(context: Context, name: String): Int {
@@ -109,10 +111,24 @@ open class BaseShowBehavior : IShowBehavior {
         adView.storeView = adView.findViewById(findViewId(context,"ad_store"))
         adView.priceView = adView.findViewById(findViewId(context,"ad_price"))
 
-        // 2. Headline
-        (adView.headlineView as? TextView)?.text = nativeAd.headline
+        bindHeadline(nativeAd, adView)
+        bindBody(nativeAd, adView)
+        bindCallToAction(nativeAd, adView)
+        bindIcon(nativeAd, adView)
+        bindStarRating(nativeAd, adView)
+        bindAdvertiser(nativeAd, adView)
+        bindStore(nativeAd, adView)
+        bindPrice(nativeAd, adView)
 
-        // 3. Body
+        adView.setNativeAd(nativeAd)
+        Log.d(TAG, "Ad view has been successfully rendered.")
+    }
+
+    private fun bindHeadline(nativeAd: NativeAd, adView: NativeAdView) {
+        (adView.headlineView as? TextView)?.text = nativeAd.headline
+    }
+
+    private fun bindBody(nativeAd: NativeAd, adView: NativeAdView) {
         val bodyView = adView.bodyView as? TextView
         if (nativeAd.body != null) {
             bodyView?.text = nativeAd.body
@@ -120,8 +136,9 @@ open class BaseShowBehavior : IShowBehavior {
         } else {
             bodyView?.visibility = android.view.View.INVISIBLE
         }
+    }
 
-        // 4. Call to Action
+    private fun bindCallToAction(nativeAd: NativeAd, adView: NativeAdView) {
         val ctaButton = adView.callToActionView as? android.widget.Button
         if (nativeAd.callToAction != null) {
             ctaButton?.text = nativeAd.callToAction
@@ -129,8 +146,9 @@ open class BaseShowBehavior : IShowBehavior {
         } else {
             ctaButton?.visibility = android.view.View.INVISIBLE
         }
+    }
 
-        // 5. Icon
+    private fun bindIcon(nativeAd: NativeAd, adView: NativeAdView) {
         val iconView = adView.iconView as? android.widget.ImageView
         if (nativeAd.icon != null) {
             iconView?.setImageDrawable(nativeAd.icon?.drawable)
@@ -138,8 +156,9 @@ open class BaseShowBehavior : IShowBehavior {
         } else {
             iconView?.visibility = android.view.View.GONE
         }
+    }
 
-        // 6. Star Rating
+    private fun bindStarRating(nativeAd: NativeAd, adView: NativeAdView) {
         val ratingBar = adView.starRatingView as? android.widget.RatingBar
         if (nativeAd.starRating != null) {
             ratingBar?.rating = nativeAd.starRating!!.toFloat()
@@ -147,8 +166,9 @@ open class BaseShowBehavior : IShowBehavior {
         } else {
             ratingBar?.visibility = android.view.View.INVISIBLE
         }
+    }
 
-        // 7. Advertiser
+    private fun bindAdvertiser(nativeAd: NativeAd, adView: NativeAdView) {
         val advertiserView = adView.advertiserView as? TextView
         if (nativeAd.advertiser != null) {
             advertiserView?.text = nativeAd.advertiser
@@ -156,8 +176,9 @@ open class BaseShowBehavior : IShowBehavior {
         } else {
             advertiserView?.visibility = android.view.View.INVISIBLE
         }
+    }
 
-        // 8. Store
+    private fun bindStore(nativeAd: NativeAd, adView: NativeAdView) {
         val storeView = adView.storeView as? TextView
         if (nativeAd.store != null) {
             storeView?.text = nativeAd.store
@@ -165,8 +186,9 @@ open class BaseShowBehavior : IShowBehavior {
         } else {
             storeView?.visibility = android.view.View.INVISIBLE
         }
+    }
 
-        // 9. Price
+    private fun bindPrice(nativeAd: NativeAd, adView: NativeAdView) {
         val priceView = adView.priceView as? TextView
         if (nativeAd.price != null) {
             priceView?.text = nativeAd.price
@@ -174,9 +196,6 @@ open class BaseShowBehavior : IShowBehavior {
         } else {
             priceView?.visibility = android.view.View.INVISIBLE
         }
-
-        adView.setNativeAd(nativeAd)
-        Log.d(TAG, "Ad view has been successfully rendered.")
     }
 
     /**

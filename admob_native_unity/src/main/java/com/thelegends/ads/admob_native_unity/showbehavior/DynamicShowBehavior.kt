@@ -18,18 +18,18 @@ import com.thelegends.ads.admob_native_unity.NativeAdLayerManager
 class DynamicShowBehavior(
     private val jsonPayload: String, 
     private val zLayerName: String
-) : BaseShowBehavior() {
+) : IShowBehavior {
 
     private val TAG = "DynamicShowBehavior"
     var renderer: NativeAdUnityRenderer? = null
     private var targetBucket: FrameLayout? = null
     private var activityRef: java.lang.ref.WeakReference<Activity>? = null
+    private var rootView: View? = null
 
     override fun show(
         activity: Activity,
         nativeAd: NativeAd,
-        layoutName: String,
-        callbacks: NativeAdCallbacks
+        layoutName: String
     ) {
         this.activityRef = java.lang.ref.WeakReference(activity)
 
@@ -81,72 +81,7 @@ class DynamicShowBehavior(
             adMobView.addView(customLayout)
 
             // 5. Data Binding (Giai đoạn 6) - Mapping NativeAd assets to the rendered views
-            val tvHeadline = (customLayout.registeredViews["Headline_Text"] as? android.widget.TextView) ?: (customLayout.registeredViews["Headline"] as? android.widget.TextView)
-            tvHeadline?.text = nativeAd.headline
-            adMobView.headlineView = customLayout.registeredViews["Headline"]
-
-            val tvCta = (customLayout.registeredViews["CallToAction_Text"] as? android.widget.TextView) ?: (customLayout.registeredViews["CallToAction"] as? android.widget.TextView)
-            tvCta?.text = nativeAd.callToAction
-            adMobView.callToActionView = customLayout.registeredViews["CallToAction"]
-
-            val tvBody = (customLayout.registeredViews["Body_Text"] as? android.widget.TextView) ?: (customLayout.registeredViews["Body"] as? android.widget.TextView)
-            if (nativeAd.body.isNullOrEmpty()) {
-                customLayout.registeredViews["Body"]?.visibility = View.INVISIBLE
-            } else {
-                tvBody?.text = nativeAd.body
-                adMobView.bodyView = customLayout.registeredViews["Body"]
-            }
-
-            val tvAdv = (customLayout.registeredViews["Advertiser_Text"] as? android.widget.TextView) ?: (customLayout.registeredViews["Advertiser"] as? android.widget.TextView)
-            if (nativeAd.advertiser.isNullOrEmpty()) {
-               customLayout.registeredViews["Advertiser"]?.visibility = View.INVISIBLE
-            } else {
-               tvAdv?.text = nativeAd.advertiser
-               adMobView.advertiserView = customLayout.registeredViews["Advertiser"]
-            }
-
-            val tvStore = (customLayout.registeredViews["Store_Text"] as? android.widget.TextView) ?: (customLayout.registeredViews["Store"] as? android.widget.TextView)
-            if (nativeAd.store.isNullOrEmpty()) {
-               customLayout.registeredViews["Store"]?.visibility = View.INVISIBLE
-            } else {
-               tvStore?.text = nativeAd.store
-               adMobView.storeView = customLayout.registeredViews["Store"]
-            }
-            
-            val tvPrice = (customLayout.registeredViews["Price_Text"] as? android.widget.TextView) ?: (customLayout.registeredViews["Price"] as? android.widget.TextView)
-            if (nativeAd.price.isNullOrEmpty()) {
-               customLayout.registeredViews["Price"]?.visibility = View.INVISIBLE
-            } else {
-               tvPrice?.text = nativeAd.price
-               adMobView.priceView = customLayout.registeredViews["Price"]
-            }
-            
-            val rbStar = (customLayout.registeredViews["StarRating_Text"] as? android.widget.TextView) ?: (customLayout.registeredViews["StarRating"] as? android.widget.TextView)
-            if (nativeAd.starRating == null) {
-               customLayout.registeredViews["StarRating"]?.visibility = View.INVISIBLE
-            } else {
-               rbStar?.text = nativeAd.starRating.toString()
-               adMobView.starRatingView = customLayout.registeredViews["StarRating"]
-            }
-
-            // Xử lý Icon Mạng
-            val ivIcon = customLayout.registeredViews["IconView"]
-            if (ivIcon != null) {
-                if (nativeAd.icon == null) {
-                    ivIcon.visibility = View.INVISIBLE
-                } else {
-                    // View đôi khi là FrameLayout chứa ImageView, ép kiểu cẩn thận
-                    val imageView = ivIcon as? android.widget.ImageView ?: (ivIcon as? FrameLayout)?.getChildAt(0) as? android.widget.ImageView
-                    imageView?.setImageDrawable(nativeAd.icon?.drawable)
-                    adMobView.iconView = ivIcon
-                }
-            }
-
-            // Xử lý Media Mạng (Video/Ảnh Bìa)
-            val mv = customLayout.registeredViews["MediaView"] as? com.google.android.gms.ads.nativead.MediaView
-            if (mv != null) {
-                adMobView.mediaView = mv
-            }
+            AdDataBinder.bind(nativeAd, adMobView, customLayout)
 
             // 6. Nhấn nút để SDK Ghi Nhận View/Click
             adMobView.setNativeAd(nativeAd)
@@ -177,5 +112,13 @@ class DynamicShowBehavior(
             renderer = null
             this.rootView = null
         }
+    }
+
+    override fun getRootView(): View? {
+        return this.rootView
+    }
+
+    override fun getRegisteredViews(): Map<String, View>? {
+        return renderer?.registeredViews
     }
 }
