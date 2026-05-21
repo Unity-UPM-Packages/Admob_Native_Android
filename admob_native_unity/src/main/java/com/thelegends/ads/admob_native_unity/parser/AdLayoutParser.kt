@@ -26,6 +26,7 @@ class AdLayoutParser {
         val referenceHeight = root.optDouble("referenceHeight", 1920.0).toFloat()
 
         val elementsArray = root.optJSONArray("elements")
+            ?: throw org.json.JSONException("Invalid schema: Missing 'elements' array in layout JSON.")
 
         val rootBounds   = extractRootBounds(elementsArray)
         val elementList  = parseElements(elementsArray)
