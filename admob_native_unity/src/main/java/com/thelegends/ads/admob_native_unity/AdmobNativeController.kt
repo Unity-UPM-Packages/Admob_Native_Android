@@ -159,6 +159,10 @@ class AdmobNativeController(
     }
 
     fun destroyAd() {
+        val activity = activityRef.get() ?: run {
+            Log.e(TAG, "Activity has been destroyed. Cannot destroy ad.")
+            return
+        }
         activity.runOnUiThread {
             resetAllConfigs()
 
