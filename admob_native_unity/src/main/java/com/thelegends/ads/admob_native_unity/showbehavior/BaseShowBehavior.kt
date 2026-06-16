@@ -64,6 +64,10 @@ open class BaseShowBehavior : IShowBehavior {
 
             populateNativeAdView(nativeAd, nativeAdView)
             adContainer.addView(adContentView)
+
+            adContainer.elevation = adContentView.elevation
+            adContainer.translationZ = adContentView.translationZ
+
             adContainer.bringToFront()
         }
     }

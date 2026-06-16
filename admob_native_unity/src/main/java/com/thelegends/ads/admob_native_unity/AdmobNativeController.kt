@@ -141,6 +141,27 @@ class AdmobNativeController(
         }
     }
 
+    fun updateAdViewSize(widthPx: Int, heightPx: Int) {
+        activity.runOnUiThread {
+
+            val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
+            val nativeAdView = adContainer?.findViewById<View>(
+                activity.resources.getIdentifier("native_ad_view", "id", activity.packageName)
+            )
+
+            nativeAdView?.post {
+                val params = nativeAdView.layoutParams
+                params?.let {
+                    it.height = heightPx
+                    it.width = widthPx
+                    nativeAdView.layoutParams = it
+                    Log.d(TAG, "Updated ad size to $widthPx x $heightPx pixels")
+                }
+
+            }
+        }
+    }
+
     fun isAdAvailable(): Boolean = loadedNativeAd != null
 
     fun getResponseInfo(): ResponseInfo? {
@@ -239,47 +260,79 @@ class AdmobNativeController(
     fun getWidthInPixels(): Float {
         val task = FutureTask(Callable<Int> {
             val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
-            val adContent = adContainer?.findViewById<View>(
-                activity.resources.getIdentifier("ad_content", "id", activity.packageName)
+            val viewToMeasure = adContainer?.findViewById<View>(
+                activity.resources.getIdentifier("background", "id", activity.packageName)
             )
-            adContent?.width ?: 0
+
+            if (viewToMeasure != null) {
+                val displayMetrics = activity.resources.displayMetrics
+                val screenWidth = displayMetrics.widthPixels
+                val screenHeight = displayMetrics.heightPixels
+
+                val lp = viewToMeasure.layoutParams
+
+                val widthSpec = android.view.ViewGroup.getChildMeasureSpec(
+                    View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
+                    0, lp.width
+                )
+                val heightSpec = android.view.ViewGroup.getChildMeasureSpec(
+                    View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST),
+                    0, lp.height
+                )
+
+                viewToMeasure.measure(widthSpec, heightSpec)
+                viewToMeasure.measuredWidth
+            } else {
+                0
+            }
         })
 
         activity.runOnUiThread(task)
-
-        try {
-            return task.get().toFloat()
-        } catch (e: InterruptedException) {
-            Log.e(TAG, "Failed to get ad view width (Interrupted): ${e.localizedMessage}")
-            Thread.currentThread().interrupt() // Khôi phục trạng thái interrupt
-        } catch (e: ExecutionException) {
-            Log.e(TAG, "Failed to get ad view width (Execution): ${e.localizedMessage}")
+        return try {
+            task.get().toFloat()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get measured width: ${e.localizedMessage}")
+            0f
         }
-
-        return -1.0f
     }
 
     fun getHeightInPixels(): Float {
         val task = FutureTask(Callable<Int> {
             val adContainer = (currentShowBehavior as? BaseShowBehavior)?.getRootView()
-            val adContent = adContainer?.findViewById<View>(
-                activity.resources.getIdentifier("ad_content", "id", activity.packageName)
+            val viewToMeasure = adContainer?.findViewById<View>(
+                activity.resources.getIdentifier("background", "id", activity.packageName)
             )
-            adContent?.height ?: 0
+
+            if (viewToMeasure != null) {
+                val displayMetrics = activity.resources.displayMetrics
+                val screenWidth = displayMetrics.widthPixels
+                val screenHeight = displayMetrics.heightPixels
+
+                val lp = viewToMeasure.layoutParams
+
+                val widthSpec = android.view.ViewGroup.getChildMeasureSpec(
+                    View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
+                    0, lp.width
+                )
+                val heightSpec = android.view.ViewGroup.getChildMeasureSpec(
+                    View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST),
+                    0, lp.height
+                )
+
+                viewToMeasure.measure(widthSpec, heightSpec)
+                viewToMeasure.measuredHeight
+            } else {
+                0
+            }
         })
 
         activity.runOnUiThread(task)
-
-        try {
-            return task.get().toFloat()
-        } catch (e: InterruptedException) {
-            Log.e(TAG, "Failed to get ad view width (Interrupted): ${e.localizedMessage}")
-            Thread.currentThread().interrupt() // Khôi phục trạng thái interrupt
-        } catch (e: ExecutionException) {
-            Log.e(TAG, "Failed to get ad view width (Execution): ${e.localizedMessage}")
+        return try {
+            task.get().toFloat()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get measured height: ${e.localizedMessage}")
+            0f
         }
-
-        return -1.0f
     }
 
 
