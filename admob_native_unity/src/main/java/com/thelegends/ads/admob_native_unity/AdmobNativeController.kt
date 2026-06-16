@@ -126,17 +126,19 @@ class AdmobNativeController(
     }
 
     fun destroyAd() {
-        resetAllConfigs()
+        activity.runOnUiThread {
+            resetAllConfigs()
 
-        currentShowBehavior?.destroy()
-        currentShowBehavior = null
+            currentShowBehavior?.destroy()
+            currentShowBehavior = null
 
-        loadedNativeAd?.destroy()
-        loadedNativeAd = null
+            loadedNativeAd?.destroy()
+            loadedNativeAd = null
 
-        callbacks.onAdClosed()
+            callbacks.onAdClosed()
 
-        Log.d(TAG, "Native ad has been destroyed.")
+            Log.d(TAG, "Native ad has been destroyed.")
+        }
     }
 
     fun isAdAvailable(): Boolean = loadedNativeAd != null
