@@ -69,10 +69,13 @@ class DynamicShowBehavior(
             adMobView.layoutParams = adMobParams
 
             // customLayout fills the NativeAdView container (using normalized local coordinates)
-            customLayout.layoutParams = ViewGroup.LayoutParams(
+            val customLayoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
+                adHeight
+            ).apply {
+                gravity = android.view.Gravity.BOTTOM
+            }
+            customLayout.layoutParams = customLayoutParams
 
             this.renderer = customLayout
             this.rootView = adMobView
