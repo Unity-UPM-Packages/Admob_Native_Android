@@ -4,6 +4,8 @@ package com.thelegends.admob_native_unity
 import android.app.Activity
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.nativead.NativeAd
 import com.thelegends.ads.admob_native_unity.decorator.*
@@ -179,6 +181,50 @@ class AdmobNativeController(
         }
     }
 
+    fun updateAdViewSize(widthPx: Int, heightPx: Int) {
+        val activity = activityRef.get() ?: run {
+            Log.e(TAG, "Activity has been destroyed. Cannot update ad view size.")
+            return
+        }
+        activity.runOnUiThread {
+            val adContainer = currentShowBehavior?.getRootView() ?: return@runOnUiThread
+            
+            // For dynamic layout, the container itself is the NativeAdView.
+            // For XML layout, look for the native_ad_view inside.
+            val targetView = if (adContainer is com.google.android.gms.ads.nativead.NativeAdView) {
+                adContainer
+            } else {
+                val id = activity.resources.getIdentifier("native_ad_view", "id", activity.packageName)
+                if (id != 0) adContainer.findViewById<View>(id) else null
+            }
+
+            targetView?.post {
+                val params = targetView.layoutParams
+                if (params != null) {
+                    params.width = widthPx
+                    params.height = heightPx
+
+                    if (params is FrameLayout.LayoutParams) {
+                        val dynamicBehavior = unwrapDynamicBehavior()
+                        if (dynamicBehavior != null) {
+                            val originalRect = dynamicBehavior.renderer?.getRootPixelRect()
+                            if (originalRect != null && originalRect.height() > 0) {
+                                val originalHeight = originalRect.height()
+                                val originalTop = originalRect.top
+                                // Shift the top margin upwards by the height difference to keep the bottom anchored
+                                params.topMargin = originalTop - (heightPx - originalHeight)
+                                Log.d(TAG, "Adjusted dynamic ad topMargin to ${params.topMargin} (originalTop: $originalTop, originalHeight: $originalHeight, newHeight: $heightPx)")
+                            }
+                        }
+                    }
+
+                    targetView.layoutParams = params
+                    Log.d(TAG, "Updated ad view size to $widthPx x $heightPx pixels")
+                }
+            }
+        }
+    }
+
     fun isAdAvailable(): Boolean = loadedNativeAd != null
 
     fun getResponseInfo(): ResponseInfo? = loadedNativeAd?.responseInfo
@@ -238,85 +284,125 @@ class AdmobNativeController(
 
     // ── Dimension Queries ─────────────────────────────────────────────────────
 
-    /**
-     * Queries the rendered ad width asynchronously and delivers the result via [onResult].
-     *
-     * FIX #2: Replaced blocking FutureTask.get() with a non-blocking async callback to
-     * eliminate the deadlock that occurred when this method was called from the UI thread.
-     *
-     * For Dynamic layouts, always returns the root ad rect width via [DynamicShowBehavior].
-     * For XML layouts, falls back to the "ad_content" view lookup.
-     *
-     * @param onResult Called on the UI thread with the width in pixels, or -1 if unavailable.
-     */
-    fun getWidthInPixels(onResult: (Float) -> Unit) {
-        val activity = activityRef.get() ?: run {
-            onResult(-1f)
-            return
-        }
-        activity.runOnUiThread {
-            val width = resolveAdWidth(activity)
-            Log.d(TAG, "Ad width resolved: $width px")
-            onResult(width)
-        }
-    }
-
-    /**
-     * Queries the rendered ad height asynchronously and delivers the result via [onResult].
-     *
-     * FIX #2: Same deadlock fix as [getWidthInPixels].
-     *
-     * @param onResult Called on the UI thread with the height in pixels, or -1 if unavailable.
-     */
-    fun getHeightInPixels(onResult: (Float) -> Unit) {
-        val activity = activityRef.get() ?: run {
-            onResult(-1f)
-            return
-        }
-        activity.runOnUiThread {
-            val height = resolveAdHeight(activity)
-            Log.d(TAG, "Ad height resolved: $height px")
-            onResult(height)
-        }
-    }
-
-    // FIX #3: Dynamic layout → read from rootPixelRect; XML layout → R.id fallback
-    private fun resolveAdWidth(activity: Activity): Float {
-        // DynamicShowBehavior path: use pre-computed pixel rect (no R.id dependency)
+    fun getWidthInPixels(): Float {
+        val activity = activityRef.get() ?: return -1f
+        
+        // 1. Dynamic layout path: return pre-calculated width (no JNI blocking / UI thread issues)
         val dynamicBehavior = unwrapDynamicBehavior()
         if (dynamicBehavior != null) {
             return dynamicBehavior.renderer?.getRootPixelRect()?.width()?.toFloat() ?: -1f
         }
 
-        // XML layout path: find view by resource ID
-        val adContent = findAdContentView(activity)
-        return adContent?.width?.toFloat() ?: -1f
+        // 2. XML layout path: measure on UI thread (safely check Looper to prevent deadlocks)
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            return resolveXmlAdWidth(activity)
+        }
+        val task = java.util.concurrent.FutureTask(java.util.concurrent.Callable<Float> {
+            resolveXmlAdWidth(activity)
+        })
+        activity.runOnUiThread(task)
+        return try {
+            task.get()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get XML ad width: ${e.localizedMessage}")
+            -1f
+        }
     }
 
-    private fun resolveAdHeight(activity: Activity): Float {
+    fun getHeightInPixels(): Float {
+        val activity = activityRef.get() ?: return -1f
+        
+        // 1. Dynamic layout path: return pre-calculated height
         val dynamicBehavior = unwrapDynamicBehavior()
         if (dynamicBehavior != null) {
             return dynamicBehavior.renderer?.getRootPixelRect()?.height()?.toFloat() ?: -1f
         }
 
-        val adContent = findAdContentView(activity)
-        return adContent?.height?.toFloat() ?: -1f
+        // 2. XML layout path: measure on UI thread (safely check Looper to prevent deadlocks)
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            return resolveXmlAdHeight(activity)
+        }
+        val task = java.util.concurrent.FutureTask(java.util.concurrent.Callable<Float> {
+            resolveXmlAdHeight(activity)
+        })
+        activity.runOnUiThread(task)
+        return try {
+            task.get()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get XML ad height: ${e.localizedMessage}")
+            -1f
+        }
     }
 
-    /**
-     * Returns the [DynamicShowBehavior] if it is the active behavior (possibly wrapped by decorators).
-     * We keep a direct reference [innerDynamicBehavior] set at assembly time to avoid
-     * traversing private decorator fields.
-     */
-    // Ref kept for getting dimensions directly from the JSON layout renderer
+    private fun resolveXmlAdWidth(activity: Activity): Float {
+        val adContainer = currentShowBehavior?.getRootView() ?: return -1f
+        val viewToMeasure = findXmlViewToMeasure(activity, adContainer)
+        
+        val displayMetrics = activity.resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels
+
+        val lp = viewToMeasure.layoutParams ?: ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        val widthSpec = android.view.ViewGroup.getChildMeasureSpec(
+            View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
+            0, lp.width
+        )
+        val heightSpec = android.view.ViewGroup.getChildMeasureSpec(
+            View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST),
+            0, lp.height
+        )
+
+        viewToMeasure.measure(widthSpec, heightSpec)
+        return viewToMeasure.measuredWidth.toFloat()
+    }
+
+    private fun resolveXmlAdHeight(activity: Activity): Float {
+        val adContainer = currentShowBehavior?.getRootView() ?: return -1f
+        val viewToMeasure = findXmlViewToMeasure(activity, adContainer)
+        
+        val displayMetrics = activity.resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels
+
+        val lp = viewToMeasure.layoutParams ?: ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        val widthSpec = android.view.ViewGroup.getChildMeasureSpec(
+            View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
+            0, lp.width
+        )
+        val heightSpec = android.view.ViewGroup.getChildMeasureSpec(
+            View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST),
+            0, lp.height
+        )
+
+        viewToMeasure.measure(widthSpec, heightSpec)
+        return viewToMeasure.measuredHeight.toFloat()
+    }
+
+    private fun findXmlViewToMeasure(activity: Activity, adContainer: View): View {
+        val ids = arrayOf("background", "ad_content", "native_ad_view")
+        for (idStr in ids) {
+            val id = activity.resources.getIdentifier(idStr, "id", activity.packageName)
+            if (id != 0) {
+                val view = adContainer.findViewById<View>(id)
+                if (view != null) return view
+            }
+        }
+        if (adContainer is ViewGroup && adContainer.childCount > 0) {
+            val child = adContainer.getChildAt(0)
+            if (child != null) return child
+        }
+        return adContainer
+    }
 
     private fun unwrapDynamicBehavior(): DynamicShowBehavior? = innerDynamicBehavior
-
-    private fun findAdContentView(activity: Activity): View? {
-        val adContainer = currentShowBehavior?.getRootView()
-        val id = activity.resources.getIdentifier("ad_content", "id", activity.packageName)
-        return if (id != 0) adContainer?.findViewById(id) else null
-    }
 
     // ── Configuration DSL ─────────────────────────────────────────────────────
 
