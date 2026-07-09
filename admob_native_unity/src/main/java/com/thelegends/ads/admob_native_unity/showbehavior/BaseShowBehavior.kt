@@ -169,6 +169,19 @@ open class BaseShowBehavior : IShowBehavior {
             priceView?.visibility = android.view.View.INVISIBLE
         }
 
+        // 10. Main Image (static image asset in XML layout)
+        val mainImageView = adView.findViewById<android.widget.ImageView>(findViewId(context, "main_image"))
+        if (mainImageView != null) {
+            mainImageView.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            val images = nativeAd.images
+            if (images.isNotEmpty() && images[0] != null) {
+                mainImageView.setImageDrawable(images[0].drawable)
+                mainImageView.visibility = android.view.View.VISIBLE
+            } else {
+                mainImageView.visibility = android.view.View.GONE
+            }
+        }
+
         adView.setNativeAd(nativeAd)
 
         Log.d(TAG, "Ad view has been shown")
