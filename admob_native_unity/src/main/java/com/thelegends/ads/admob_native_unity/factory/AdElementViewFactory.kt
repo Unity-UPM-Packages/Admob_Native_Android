@@ -56,6 +56,7 @@ class AdElementViewFactory(private val builders: List<ElementViewBuilder>) {
             listOf(
                 MediaViewBuilder(),
                 IconViewBuilder(),
+                MainImageViewBuilder(),
                 CompositeViewBuilder(),
                 ImageOnlyViewBuilder(),
                 TextOnlyViewBuilder(),

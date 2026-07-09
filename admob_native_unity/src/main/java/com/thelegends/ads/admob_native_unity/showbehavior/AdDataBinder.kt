@@ -71,6 +71,18 @@ object AdDataBinder {
             }
         }
 
+        val ivMain = registeredViews["MainImage"]
+        if (ivMain != null) {
+            val images = nativeAd.images
+            if (images.isNotEmpty() && images[0] != null) {
+                val imageView = ivMain as? ImageView ?: (ivMain as? FrameLayout)?.getChildAt(0) as? ImageView
+                imageView?.setImageDrawable(images[0].drawable)
+                ivMain.visibility = View.VISIBLE
+            } else {
+                ivMain.visibility = View.INVISIBLE
+            }
+        }
+
         val mv = registeredViews["MediaView"] as? com.google.android.gms.ads.nativead.MediaView
         if (mv != null) {
             adMobView.mediaView = mv

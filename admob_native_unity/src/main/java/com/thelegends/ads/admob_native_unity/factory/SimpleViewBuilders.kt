@@ -21,6 +21,23 @@ class MediaViewBuilder : ElementViewBuilder {
 }
 
 /**
+ * Builds a plain [ImageView] for the main ad image slot.
+ */
+class MainImageViewBuilder : ElementViewBuilder {
+
+    override fun canHandle(data: ElementData): Boolean =
+        data.elementType == "MainImage"
+
+    override fun build(ctx: ViewBuilderContext, data: ElementData): ViewCreationResult {
+        val imageView = ImageView(ctx.context).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+        return ViewCreationResult(view = imageView, primaryKey = data.elementType)
+    }
+}
+
+/**
  * Builds a plain [ImageView] for the ad icon slot.
  * The SDK supplies the icon drawable after [NativeAdView.setNativeAd] is called.
  */
