@@ -35,7 +35,7 @@
                 tools:src="@android:drawable/sym_def_app_icon" />
 
             <!-- Nút CTA bên phải -->
-            <androidx.appcompat.widget.AppCompatButton
+            <android.widget.Button
                 android:id="@+id/cta"
                 android:layout_width="140dp"
                 android:layout_height="40dp"

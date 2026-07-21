@@ -102,9 +102,16 @@ open class BaseShowBehavior : IShowBehavior {
         adView.advertiserView = adView.findViewById(findViewId(context, "secondary"))
         adView.storeView = adView.findViewById(findViewId(context,"ad_store"))
         adView.priceView = adView.findViewById(findViewId(context,"ad_price"))
+        adView.imageView = adView.findViewById(findViewId(context, "main_image"))
 
         // 2. Headline
-        (adView.headlineView as? TextView)?.text = nativeAd.headline
+        val headLineView = adView.headlineView as? TextView
+        if (nativeAd.headline != null) {
+            headLineView?.text = nativeAd.headline
+            headLineView?.visibility = android.view.View.VISIBLE
+        } else {
+            headLineView?.visibility = android.view.View.INVISIBLE
+        }
 
         // 3. Body
         val bodyView = adView.bodyView as? TextView
@@ -170,16 +177,15 @@ open class BaseShowBehavior : IShowBehavior {
         }
 
         // 10. Main Image (static image asset in XML layout)
-        val mainImageView = adView.findViewById<android.widget.ImageView>(findViewId(context, "main_image"))
-        if (mainImageView != null) {
-            mainImageView.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-            val images = nativeAd.images
-            if (images.isNotEmpty() && images[0] != null) {
-                mainImageView.setImageDrawable(images[0].drawable)
-                mainImageView.visibility = android.view.View.VISIBLE
-            } else {
-                mainImageView.visibility = android.view.View.GONE
-            }
+        val mainImageView = adView.imageView as? android.widget.ImageView
+        val images = nativeAd.images
+
+        if (images.isNotEmpty()) {
+            mainImageView?.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            mainImageView?.setImageDrawable(images[0].drawable)
+            mainImageView?.visibility = android.view.View.VISIBLE
+        } else {
+            mainImageView?.visibility = android.view.View.GONE
         }
 
         adView.setNativeAd(nativeAd)

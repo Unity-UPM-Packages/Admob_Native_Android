@@ -32,7 +32,7 @@
                 app:layout_constraintTop_toTopOf="parent"
                 tools:src="@android:drawable/sym_def_app_icon" />
 
-            <androidx.appcompat.widget.AppCompatButton
+            <Button
                 android:id="@+id/cta"
                 android:layout_width="wrap_content"
                 android:minWidth="120dp"

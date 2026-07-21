@@ -9,19 +9,12 @@ import com.google.android.gms.ads.nativead.NativeAd
 import com.thelegends.ads.admob_native_unity.decorator.*
 import com.thelegends.ads.admob_native_unity.showbehavior.*
 import java.util.concurrent.Callable
-import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
+
 class AdmobNativeController(
     private val activity: Activity,
     private val callbacks: NativeAdCallbacks
 ) {
-
-    private val unityCallbackExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
-
-    private fun notifyUnity(action: () -> Unit) {
-        unityCallbackExecutor.execute(action)
-    }
-
     private var loadedNativeAd: NativeAd? = null
     private var currentShowBehavior: IShowBehavior? = null
 
@@ -47,43 +40,43 @@ class AdmobNativeController(
                         Log.d(TAG, "Ad loaded successfully.")
                         this.loadedNativeAd = ad
                         setupAdCallbacks(ad)
+                        callbacks.onAdLoaded()
                     }
-                    notifyUnity { callbacks.onAdLoaded() }
                 }
                 .withAdListener(object : AdListener() {
                     override fun onAdFailedToLoad(adError: LoadAdError) {
                         activity.runOnUiThread {
                             Log.d(TAG, "Ad load failed: ${adError.message}")
+                            callbacks.onAdFailedToLoad(adError)
                         }
-                        notifyUnity { callbacks.onAdFailedToLoad(adError) }
                     }
 
                     override fun onAdClicked() {
                         activity.runOnUiThread {
                             Log.d(TAG, "Ad clicked.")
+                            callbacks.onAdClicked()
                         }
-                        notifyUnity { callbacks.onAdClicked() }
                     }
 
                     override fun onAdImpression() {
                         activity.runOnUiThread {
                             Log.d(TAG, "Ad impression recorded.")
+                            callbacks.onAdDidRecordImpression()
                         }
-                        notifyUnity { callbacks.onAdDidRecordImpression() }
                     }
 
                     override fun onAdOpened() {
                         activity.runOnUiThread {
                             Log.d(TAG, "Ad opened Full Screen Content.")
+                            callbacks.onAdShowedFullScreenContent()
                         }
-                        notifyUnity { callbacks.onAdShowedFullScreenContent() }
                     }
 
                     override fun onAdClosed() {
                         activity.runOnUiThread {
                             Log.d(TAG, "Ad closed Full Screen Content.")
+                            callbacks.onAdDismissedFullScreenContent()
                         }
-                        notifyUnity { callbacks.onAdDismissedFullScreenContent() }
                     }
                 })
                 .withNativeAdOptions(adOptions)
@@ -128,7 +121,7 @@ class AdmobNativeController(
         behavior.show(activity, adToShow, layoutName, callbacks)
         currentShowBehavior = behavior
 
-        notifyUnity { callbacks.onAdShow() }
+        callbacks.onAdShow()
     }
 
     fun destroyAd() {
@@ -142,8 +135,9 @@ class AdmobNativeController(
             loadedNativeAd = null
 
             Log.d(TAG, "Native ad has been destroyed.")
+
+            callbacks.onAdClosed()
         }
-        notifyUnity { callbacks.onAdClosed() }
     }
 
     fun updateAdViewSize(widthPx: Int, heightPx: Int) {
@@ -179,36 +173,36 @@ class AdmobNativeController(
                 override fun onVideoStart() {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video started.")
+                        callbacks.onVideoStart()
                     }
-                    notifyUnity { callbacks.onVideoStart() }
                 }
 
                 override fun onVideoPlay() {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video played.")
+                        callbacks.onVideoPlay()
                     }
-                    notifyUnity { callbacks.onVideoPlay() }
                 }
 
                 override fun onVideoPause() {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video paused.")
+                        callbacks.onVideoPause()
                     }
-                    notifyUnity { callbacks.onVideoPause() }
                 }
 
                 override fun onVideoEnd() {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video ended.")
+                        callbacks.onVideoEnd()
                     }
-                    notifyUnity { callbacks.onVideoEnd() }
                 }
 
                 override fun onVideoMute(isMuted: Boolean) {
                     activity.runOnUiThread {
                         Log.d(TAG, "Video isMuted: $isMuted.")
+                        callbacks.onVideoMute(isMuted)
                     }
-                    notifyUnity { callbacks.onVideoMute(isMuted) }
                 }
             }
         ad.mediaContent?.videoController?.videoLifecycleCallbacks = videoLifecycleCallbacks
@@ -217,13 +211,12 @@ class AdmobNativeController(
             activity.runOnUiThread {
                 Log.d(TAG, "Paid event received: $adValue")
             }
-            notifyUnity {
-                callbacks.onPaidEvent(
-                    adValue.precisionType,
-                    adValue.valueMicros,
-                    adValue.currencyCode
-                )
-            }
+            callbacks.onPaidEvent(
+                adValue.precisionType,
+                adValue.valueMicros,
+                adValue.currencyCode
+            )
+
         }
     }
 
@@ -341,9 +334,6 @@ class AdmobNativeController(
             0f
         }
     }
-
-
-
 
 
 }
