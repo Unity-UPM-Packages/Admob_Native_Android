@@ -20,15 +20,45 @@
             android:layout_height="match_parent"
             android:background="@color/gnt_bg_dark">
 
-            <!-- 1. Khung chứa Icon lớn 180dp thay thế MediaView ở khu vực trung tâm -->
+            <!-- 1. Header ở phía trên cùng, cao bằng bottom_card: chứa nhãn Ad, Headline, Advertiser -->
+            <View
+                android:id="@+id/top_card"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/gnt_fs_bottom_card_height"
+                android:background="@color/gnt_bg_dark"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!-- Đường phân cách giữa top_card và no_media_container (màu #505763) -->
+            <View
+                android:id="@+id/divider"
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:background="#505763"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/top_card" />
+
+            <!-- 2. Nền Footer ở phía dưới cùng, chỉ chứa nút CTA -->
+            <View
+                android:id="@+id/bottom_card"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/gnt_fs_bottom_card_height"
+                android:background="@color/gnt_bg_dark"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <!-- 3. Khung chứa Icon lớn thay thế MediaView ở khu vực giữa divider và bottom_card -->
             <FrameLayout
                 android:id="@+id/no_media_container"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                app:layout_constraintBottom_toTopOf="@id/divider"
+                app:layout_constraintBottom_toTopOf="@id/bottom_card"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent">
+                app:layout_constraintTop_toBottomOf="@id/divider">
 
                 <ImageView
                     android:id="@+id/icon"
@@ -39,53 +69,13 @@
                     tools:src="@android:drawable/sym_def_app_icon" />
             </FrameLayout>
 
-            <!-- Đường phân cách giữa no_media_container và bottom_card (màu #505763) -->
-            <View
-                android:id="@+id/divider"
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:background="#505763"
-                app:layout_constraintBottom_toTopOf="@id/bottom_card"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
-
-            <!-- 2. Nền Footer ở phía dưới cùng với chiều cao responsive -->
-            <View
-                android:id="@+id/bottom_card"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/gnt_fs_bottom_card_height"
-                android:background="@color/gnt_bg_dark"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
-
-            <!-- 3. Headline Vùng Click Mở Rộng 100% Toàn Màn Hình:
-                 Kéo căng 0dp x 0dp chạm 4 góc ngoài cùng màn hình (Top, Bottom, Left, Right) -->
-            <TextView
-                android:id="@+id/headline"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:ellipsize="end"
-                android:gravity="bottom|start"
-                android:maxLines="1"
-                android:paddingBottom="@dimen/gnt_fs_headline_padding_bottom"
-                android:paddingEnd="160dp"
-                android:paddingStart="@dimen/gnt_inter_top_headline_padding_start"
-                android:textColor="@color/gnt_white"
-                android:textSize="@dimen/gnt_fs_headline_size"
-                android:textStyle="bold"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                tools:text="Headline" />
-
-            <!-- 4. Nút CTA bên phải footer (căn giữa theo chiều dọc) -->
+            <!-- 4. Nút CTA kéo dài hết chiều ngang footer, cách lề 20dp (căn giữa theo chiều dọc) -->
             <android.widget.Button
                 android:id="@+id/cta"
-                android:layout_width="@dimen/gnt_fs_cta_width"
+                android:layout_width="0dp"
                 android:layout_height="@dimen/gnt_fs_cta_height"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginStart="20dp"
                 android:background="@drawable/btn_cta_blue"
                 android:gravity="center"
                 android:maxLines="1"
@@ -95,14 +85,14 @@
                 android:textStyle="bold"
                 app:layout_constraintBottom_toBottomOf="@id/bottom_card"
                 app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="@id/bottom_card" />
 
-            <!-- 5. Nhãn Ad màu vàng: Chuỗi dọc Packed cùng Advertiser để căn giữa theo chiều dọc -->
+            <!-- 5. Nhãn Ad màu vàng: căn giữa theo chiều dọc với Headline -->
             <TextView
                 android:id="@+id/ad_notification_view"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="3dp"
                 android:layout_marginStart="@dimen/gnt_inter_top_badge_margin_start"
                 android:background="@drawable/ad_badge_yellow_background"
                 android:gravity="center"
@@ -114,12 +104,30 @@
                 android:textColor="@color/gnt_ad_badge_text_brown"
                 android:textSize="@dimen/gnt_fs_ad_badge_size"
                 android:textStyle="bold"
-                app:layout_constraintBottom_toTopOf="@id/advertiser"
+                app:layout_constraintBottom_toBottomOf="@id/headline"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="@id/bottom_card"
-                app:layout_constraintVertical_chainStyle="packed" />
+                app:layout_constraintTop_toTopOf="@id/headline" />
 
-            <!-- 6. Advertiser / Mô tả phụ: Phần tử thứ hai trong chuỗi dọc packed -->
+            <!-- 6. Headline bên phải nhãn Ad, kéo dài hết chiều ngang (nằm dưới nút Skip):
+                 phần tử đầu chuỗi dọc packed cùng Advertiser trong top_card -->
+            <TextView
+                android:id="@+id/headline"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/gnt_white"
+                android:textSize="@dimen/gnt_fs_headline_size"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toTopOf="@id/advertiser"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/ad_notification_view"
+                app:layout_constraintTop_toTopOf="@id/top_card"
+                app:layout_constraintVertical_chainStyle="packed"
+                tools:text="Headline" />
+
+            <!-- 7. Advertiser / Mô tả phụ: phần tử thứ hai trong chuỗi dọc packed -->
             <TextView
                 android:id="@+id/advertiser"
                 android:layout_width="0dp"
@@ -130,29 +138,31 @@
                 android:maxLines="1"
                 android:textColor="#B6BCC3"
                 android:textSize="@dimen/gnt_fs_secondary_size"
-                app:layout_constraintBottom_toBottomOf="@id/bottom_card"
-                app:layout_constraintEnd_toStartOf="@id/cta"
+                app:layout_constraintBottom_toBottomOf="@id/top_card"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/ad_notification_view"
+                app:layout_constraintTop_toBottomOf="@id/headline"
                 tools:text="body/advertise" />
 
-            <!-- 8. Nút Skip (Close) dạng Pill bo góc phải ở góc trên bên phải -->
+            <!-- 8. Nút Skip (Close) dạng Pill bo góc phải ở góc trên bên phải (vẽ đè lên Headline) -->
             <TextView
                 android:id="@+id/ad_close_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
+                android:layout_marginTop="@dimen/gnt_fs_skip_margin_top"
                 android:background="@drawable/bg_countdown_pill_right"
                 android:drawableStart="@drawable/ic_skip_next"
-                android:drawablePadding="6dp"
+                android:drawablePadding="@dimen/gnt_fs_skip_drawable_padding"
+                android:elevation="20dp"
                 android:gravity="center_vertical"
-                android:paddingBottom="7dp"
-                android:paddingEnd="16dp"
-                android:paddingStart="16dp"
-                android:paddingTop="7dp"
+                android:outlineProvider="none"
+                android:paddingBottom="@dimen/gnt_fs_skip_padding_vertical"
+                android:paddingEnd="@dimen/gnt_fs_skip_padding_horizontal"
+                android:paddingStart="@dimen/gnt_fs_skip_padding_horizontal"
+                android:paddingTop="@dimen/gnt_fs_skip_padding_vertical"
                 android:text="Skip"
                 android:textColor="@color/gnt_white"
-                android:textSize="13sp"
+                android:textSize="@dimen/gnt_fs_skip_text_size"
                 android:textStyle="bold"
                 android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"
