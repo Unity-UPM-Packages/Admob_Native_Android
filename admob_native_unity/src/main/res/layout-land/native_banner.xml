@@ -11,32 +11,32 @@
     <com.google.android.gms.ads.nativead.NativeAdView
         android:id="@+id/native_ad_view"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="40dp"
         android:layout_gravity="bottom|center_horizontal">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/background"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:paddingHorizontal="8dp"
+            android:layout_height="40dp"
             android:layout_gravity="bottom|center_horizontal"
             android:background="@color/gnt_bg_native_banner">
 
-            <!-- 1. Headline Vùng Click Phủ Tràn Toàn Bộ Banner (0dp x 0dp, đặt đầu tiên trong Z-order) -->
+            <!-- 1. Headline: bên phải nhãn Ad, kéo tới trước vạch 40% (text_guideline), cao hết banner như Advertiser,
+                 cắt "..." khi chữ dài -->
             <TextView
                 android:id="@+id/headline"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
+                android:layout_marginStart="6dp"
                 android:ellipsize="end"
                 android:gravity="start|center_vertical"
                 android:maxLines="1"
-                android:paddingStart="79dp"
                 android:textColor="#B6BCC3"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/text_guideline"
+                app:layout_constraintStart_toEndOf="@id/ad_notification_view"
                 app:layout_constraintTop_toTopOf="parent"
                 tools:text="Quảng cáo thử nghiệm" />
 
@@ -53,10 +53,9 @@
                 tools:src="@android:drawable/sym_def_app_icon" />
 
             <!-- 3. Nút CTA bên phải -->
-            <Button
+            <android.widget.Button
                 android:id="@+id/cta"
-                android:layout_width="wrap_content"
-                android:minWidth="120dp"
+                android:layout_width="120dp"
                 android:layout_height="match_parent"
                 android:background="@drawable/ad_cta_button_banner_background_inset"
                 android:paddingStart="8dp"
